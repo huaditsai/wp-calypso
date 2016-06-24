@@ -114,7 +114,6 @@ module.exports = {
 	insights: function( context, next ) {
 		var Insights = require( 'my-sites/stats/stats-insights' ),
 			StatsList = require( 'lib/stats/stats-list' ),
-			StatsSummaryList = require( 'lib/stats/summary-list' ),
 			FollowList = require( 'lib/follow-list' ),
 			site,
 			siteId = context.params.site_id,
@@ -122,10 +121,8 @@ module.exports = {
 			activeFilter = false,
 			basePath = route.sectionify( context.path ),
 			followList,
-			streakList,
 			allTimeList,
 			insightsList,
-			statSummaryList,
 			commentsList,
 			tagsList,
 			publicizeList,
@@ -134,8 +131,6 @@ module.exports = {
 			commentFollowersList,
 			summaryDate,
 			summarySites = [],
-			startDate = i18n.moment().subtract( 1, 'year' ).startOf( 'month' ).format( 'YYYY-MM-DD' ),
-			endDate = i18n.moment().endOf( 'month' ).format( 'YYYY-MM-DD' ),
 			momentSiteZone = i18n.moment(),
 			StatsComponent = Insights;
 
@@ -176,8 +171,6 @@ module.exports = {
 			? site.slug : route.getSiteFragment( context.path );
 
 		allTimeList = new StatsList( { siteID: siteId, statType: 'stats', domain: siteDomain } );
-		streakList = new StatsList( { siteID: siteId, statType: 'statsStreak', startDate: startDate, endDate: endDate, max: 3000, domain: siteDomain } );
-		statSummaryList = new StatsSummaryList( { period: 'day', sites: summarySites, domain: siteDomain } );
 		insightsList = new StatsList( { siteID: siteId, statType: 'statsInsights', domain: siteDomain } );
 		commentsList = new StatsList( { siteID: siteId, statType: 'statsComments', domain: siteDomain } );
 		tagsList = new StatsList( { siteID: siteId, statType: 'statsTags', domain: siteDomain } );
@@ -193,9 +186,7 @@ module.exports = {
 				React.createElement( StatsComponent, {
 					site: site,
 					followList: followList,
-					streakList: streakList,
 					allTimeList: allTimeList,
-					statSummaryList: statSummaryList,
 					insightsList: insightsList,
 					commentsList: commentsList,
 					tagsList: tagsList,
@@ -212,7 +203,6 @@ module.exports = {
 
 	overview: function( context, next ) {
 		var StatsComponent = require( './overview' ),
-			StatsSummaryList = require( 'lib/stats/summary-list' ),
 			filters = function() {
 				return [
 					{ title: i18n.translate( 'Days' ), path: '/stats/day', altPaths: ['/stats'], id: 'stats-day', period: 'day' },
@@ -224,7 +214,6 @@ module.exports = {
 			activeFilter = false,
 			queryOptions = context.query,
 			basePath = route.sectionify( context.path ),
-			statSummaryList,
 			summarySites;
 
 		window.scrollTo( 0, 0 );
@@ -257,10 +246,6 @@ module.exports = {
 			} );
 
 			activeFilter = activeFilter.shift();
-			statSummaryList = new StatsSummaryList( {
-				period: activeFilter.period,
-				sites: summarySites
-			} );
 
 			analytics.mc.bumpStat( 'calypso_stats_overview_period', activeFilter.period );
 			analytics.pageView.record( basePath, analyticsPageTitle + ' > ' + titlecase( activeFilter.period ) );
@@ -268,13 +253,14 @@ module.exports = {
 			recordVisitDate();
 
 			ReactDom.render(
-				React.createElement( StatsComponent, {
-					period: activeFilter.period,
-					sites: sites,
-					statSummaryList: statSummaryList,
-					path: context.pathname,
-					user: user
-				} ),
+				React.createElement( ReactRedux.Provider, { store: context.store },
+					React.createElement( StatsComponent, {
+						period: activeFilter.period,
+						sites: sites,
+						path: context.pathname,
+						user: user
+					} )
+				),
 				document.getElementById( 'primary' )
 			);
 		}

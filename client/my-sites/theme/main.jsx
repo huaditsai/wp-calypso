@@ -9,6 +9,7 @@
 import React from 'react';
 import { connect } from 'react-redux';
 import i18n from 'i18n-calypso';
+import titlecase from 'to-title-case';
 
 /**
  * Internal dependencies
@@ -17,17 +18,17 @@ import Main from 'components/main';
 import HeaderCake from 'components/header-cake';
 import SectionHeader from 'components/section-header';
 import ThemeDownloadCard from './theme-download-card';
+import ThemesRelatedCard from './themes-related-card';
 import Button from 'components/button';
 import SectionNav from 'components/section-nav';
 import NavTabs from 'components/section-nav/tabs';
 import NavItem from 'components/section-nav/item';
 import Card from 'components/card';
 import Gridicon from 'components/gridicon';
-import { signup, purchase, activate, clearActivated, customize } from 'state/themes/actions';
+import { signup, purchase, activate, customize } from 'state/themes/actions';
 import { getSelectedSite } from 'state/ui/selectors';
 import { getSiteSlug } from 'state/sites/selectors';
 import { isPremium, getForumUrl } from 'my-sites/themes/helpers';
-import ActivatingTheme from 'components/data/activating-theme';
 import ThanksModal from 'my-sites/themes/thanks-modal';
 import QueryCurrentTheme from 'components/data/query-current-theme';
 import { getCurrentTheme } from 'state/themes/current-theme/selectors';
@@ -36,6 +37,7 @@ import actionLabels from 'my-sites/themes/action-labels';
 import { getBackPath } from 'state/themes/themes-ui/selectors';
 import EmptyContentComponent from 'components/empty-content';
 import ThemePreview from 'my-sites/themes/theme-preview';
+import PageViewTracker from 'lib/analytics/page-view-tracker';
 
 const ThemeSheet = React.createClass( {
 	displayName: 'ThemeSheet',
@@ -52,6 +54,8 @@ const ThemeSheet = React.createClass( {
 		download: React.PropTypes.string,
 		taxonomies: React.PropTypes.object,
 		stylesheet: React.PropTypes.string,
+		active: React.PropTypes.bool,
+		purchased: React.PropTypes.bool,
 		isLoggedIn: React.PropTypes.bool,
 		// Connected props
 		selectedSite: React.PropTypes.object,
@@ -61,11 +65,17 @@ const ThemeSheet = React.createClass( {
 	},
 
 	getDefaultProps() {
-		return { section: 'overview' };
+		return {
+			section: '',
+		};
 	},
 
 	getInitialState() {
 		return { selectedAction: null };
+	},
+
+	componentDidMount() {
+		window.scroll( 0, 0 );
 	},
 
 	hideSiteSelectorModal() {
@@ -82,8 +92,7 @@ const ThemeSheet = React.createClass( {
 			this.props.signup( this.props );
 		} else if ( this.isActive() ) {
 			this.props.customize( this.props, this.props.selectedSite );
-		} else if ( isPremium( this.props ) ) {
-			// TODO: check theme is not already purchased
+		} else if ( this.props.price ) {
 			this.selectSiteAndDispatch( 'purchase' );
 		} else {
 			this.selectSiteAndDispatch( 'activate' );
@@ -108,7 +117,7 @@ const ThemeSheet = React.createClass( {
 
 	getValidSections() {
 		const validSections = [];
-		validSections.push( 'overview' );
+		validSections.push( '' ); // Default section
 		this.props.supportDocumentation && validSections.push( 'setup' );
 		validSections.push( 'support' );
 		return validSections;
@@ -116,7 +125,7 @@ const ThemeSheet = React.createClass( {
 
 	validateSection( section ) {
 		if ( this.getValidSections().indexOf( section ) === -1 ) {
-			return this.getValidSections()[0];
+			return this.getValidSections()[ 0 ];
 		}
 		return section;
 	},
@@ -143,8 +152,8 @@ const ThemeSheet = React.createClass( {
 		return (
 			<div className="themes__sheet-screenshot">
 				<a className="themes__sheet-preview-link" onClick={ this.togglePreview } >
-					<Gridicon icon="external" size={ 18 } />
-					<span className="themes__sheet-preview-link-text">{ i18n.translate( 'Live Preview' ) }</span>
+					<Gridicon icon="themes" size={ 18 } />
+					<span className="themes__sheet-preview-link-text">{ i18n.translate( 'Open Live Demo', { context: 'Individual theme live preview button' } ) }</span>
 				</a>
 				{ this.props.screenshot && img }
 			</div>
@@ -153,7 +162,7 @@ const ThemeSheet = React.createClass( {
 
 	renderSectionNav( currentSection ) {
 		const filterStrings = {
-			overview: i18n.translate( 'Overview', { context: 'Filter label for theme content' } ),
+			'': i18n.translate( 'Overview', { context: 'Filter label for theme content' } ),
 			setup: i18n.translate( 'Setup', { context: 'Filter label for theme content' } ),
 			support: i18n.translate( 'Support', { context: 'Filter label for theme content' } ),
 		};
@@ -165,7 +174,7 @@ const ThemeSheet = React.createClass( {
 			<NavTabs label="Details" >
 				{ this.getValidSections().map( ( section ) => (
 					<NavItem key={ section }
-						path={ `/theme/${ id }/${ section }${ sitePart }` }
+						path={ `/theme/${ id }${ section ? '/' + section : '' }${ sitePart }` }
 						selected={ section === currentSection }>
 						{ filterStrings[ section ] }
 					</NavItem>
@@ -174,7 +183,7 @@ const ThemeSheet = React.createClass( {
 		);
 
 		return (
-			<SectionNav className="themes__sheet-section-nav" selectedText={ filterStrings[currentSection] }>
+			<SectionNav className="themes__sheet-section-nav" selectedText={ filterStrings[ currentSection ] }>
 				{ this.props.name && nav }
 			</SectionNav>
 		);
@@ -182,7 +191,7 @@ const ThemeSheet = React.createClass( {
 
 	renderSectionContent( section ) {
 		return {
-			overview: this.renderOverviewTab(),
+			'': this.renderOverviewTab(),
 			setup: this.renderSetupTab(),
 			support: this.renderSupportTab(),
 		}[ section ];
@@ -196,6 +205,7 @@ const ThemeSheet = React.createClass( {
 				</Card>
 				{ this.renderFeaturesCard() }
 				{ this.renderDownload() }
+				{ this.renderRelatedThemes() }
 			</div>
 		);
 	},
@@ -234,9 +244,9 @@ const ThemeSheet = React.createClass( {
 	},
 
 	renderFeaturesCard() {
-		const themeFeatures = this.props.taxonomies && this.props.taxonomies.features instanceof Array
-		? this.props.taxonomies.features.map( function( item, i ) {
-			return ( <li key={ 'theme-features-item-' + i++ }><span>{ item.name }</span></li> );
+		const themeFeatures = this.props.taxonomies && this.props.taxonomies.theme_feature instanceof Array
+		? this.props.taxonomies.theme_feature.map( function( item ) {
+			return ( <li key={ 'theme-features-item-' + item.slug }><span>{ item.name }</span></li> );
 		} ) : [];
 
 		return (
@@ -252,7 +262,7 @@ const ThemeSheet = React.createClass( {
 	},
 
 	renderDownload() {
-		if ( 'Free' !== this.props.price ) {
+		if ( isPremium( this.props ) ) {
 			return null;
 		}
 		return <ThemeDownloadCard theme={ this.props.id } href={ this.props.download } />;
@@ -288,6 +298,10 @@ const ThemeSheet = React.createClass( {
 		);
 	},
 
+	renderRelatedThemes() {
+		return <ThemesRelatedCard currentTheme={ this.props.id } />;
+	},
+
 	renderSheet() {
 		let actionTitle = <span className="themes__sheet-button-placeholder">loading......</span>;
 		if ( this.isActive() ) {
@@ -300,16 +314,17 @@ const ThemeSheet = React.createClass( {
 		const priceElement = <span className="themes__sheet-action-bar-cost">{ this.props.price }</span>;
 		const siteID = this.props.selectedSite && this.props.selectedSite.ID;
 
+		const analyticsPath = `/theme/:slug${ section ? '/' + section : '' }${ siteID ? '/:site_id' : '' }`;
+		const analyticsPageTitle = `Themes > Details Sheet${ section ? ' > ' + titlecase( section ) : '' }${ siteID ? ' > Site' : '' }`;
+
 		return (
 			<Main className="themes__sheet">
+			<PageViewTracker path={ analyticsPath } title={ analyticsPageTitle }/>
 				{ this.renderBar() }
 				{ siteID && <QueryCurrentTheme siteId={ siteID }/> }
-				<ActivatingTheme siteId={ siteID }>
-					<ThanksModal
-						site={ this.props.selectedSite }
-						source={ 'details' }
-						clearActivated={ this.props.clearActivated }/>
-				</ActivatingTheme>
+				<ThanksModal
+					site={ this.props.selectedSite }
+					source={ 'details' }/>
 				{ this.state.selectedAction && <ThemesSiteSelectorModal
 					name={ this.state.selectedAction }
 					label={ actionLabels[ this.state.selectedAction ].label }
@@ -317,7 +332,7 @@ const ThemeSheet = React.createClass( {
 					selectedTheme={ this.props }
 					onHide={ this.hideSiteSelectorModal }
 					action={ this.props[ this.state.selectedAction ] }
-					sourcePath={ `/theme/${ this.props.id }/${ section }` }
+					sourcePath={ `/theme/${ this.props.id }${ section ? '/' + section : '' }` }
 				/> }
 				{ this.state.showPreview && this.renderPreview() }
 				<HeaderCake className="themes__sheet-action-bar"
@@ -360,5 +375,5 @@ export default connect(
 		const backPath = getBackPath( state );
 		return { selectedSite, siteSlug, currentTheme, backPath };
 	},
-	{ signup, purchase, activate, clearActivated, customize }
+	{ signup, purchase, activate, customize }
 )( ThemeSheet );

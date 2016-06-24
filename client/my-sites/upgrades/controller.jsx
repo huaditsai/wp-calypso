@@ -81,7 +81,7 @@ module.exports = {
 
 		analytics.pageView.record( basePath, 'Domain Search > Site Redirect' );
 
-		ReactDom.render(
+		renderWithReduxStore(
 			(
 				<CartData>
 					<SiteRedirect
@@ -89,7 +89,8 @@ module.exports = {
 						sites={ sites } />
 				</CartData>
 			),
-			document.getElementById( 'primary' )
+			document.getElementById( 'primary' ),
+			context.store
 		);
 	},
 
@@ -173,10 +174,10 @@ module.exports = {
 			SecondaryCart = require( './cart/secondary-cart' ),
 			storedCards = require( 'lib/stored-cards' )(),
 			basePath = route.sectionify( context.path ),
-			planName = context.params.plan_name,
+			product = context.params.product,
 			selectedFeature = context.params.feature;
 
-		if ( 'thank-you' === planName ) {
+		if ( 'thank-you' === product ) {
 			return;
 		}
 
@@ -191,7 +192,7 @@ module.exports = {
 				<CheckoutData>
 					<Checkout
 						cards={ storedCards }
-						planName={ planName }
+						product={ product }
 						plans={ plansList }
 						productsList={ productsList }
 						selectedFeature={ selectedFeature }

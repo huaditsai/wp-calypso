@@ -48,6 +48,14 @@ export default function() {
 		);
 
 		page(
+			'/plans/compare/:intervalType?/:domain',
+			retarget,
+			controller.siteSelection,
+			controller.navigation,
+			plansController.plansCompare
+		);
+
+		page(
 			'/plans/compare/:feature/:domain',
 			retarget,
 			controller.siteSelection,
@@ -74,13 +82,6 @@ export default function() {
 			'/plans/features/google-analytics',
 			retarget,
 			controller.sites
-		);
-
-		page(
-			'/plans/features/:feature/:domain',
-			retarget,
-			controller.siteSelection,
-			plansController.features
 		);
 
 		page(

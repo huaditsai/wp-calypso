@@ -8,6 +8,7 @@ import trim from 'lodash/trim';
 /**
  * Internal Dependencies
  */
+import { domForHtml } from './utils';
 
 export default function createBetterExcerpt( post ) {
 	if ( ! post || ! post.content ) {
@@ -19,12 +20,12 @@ export default function createBetterExcerpt( post ) {
 	}
 
 	// Spin up a new DOM for the linebreak markup
-	const dom = document.createElement( 'div' );
+	const dom = domForHtml( post.content );
 	dom.id = '__better_excerpt__';
 	dom.innerHTML = post.content;
 
 	// Ditch any photo captions with the wp-caption-text class, styles, scripts
-	forEach( dom.querySelectorAll( '.wp-caption-text, style, script' ), removeElement );
+	forEach( dom.querySelectorAll( '.wp-caption-text, style, script, blockquote[class^="instagram-"]' ), removeElement );
 
 	// limit to paras and brs
 	dom.innerHTML = striptags( dom.innerHTML, [ 'p', 'br' ] );
@@ -38,10 +39,12 @@ export default function createBetterExcerpt( post ) {
 		element.parentNode && element.parentNode.removeChild( element );
 	} );
 
-	// now strip any p's that are empty
+	// now strip any p's that are empty and remove styles
 	forEach( dom.querySelectorAll( 'p' ), function( element ) {
 		if ( trim( element.textContent ).length === 0 ) {
 			element.parentNode && element.parentNode.removeChild( element );
+		} else {
+			element.removeAttribute( 'style' );
 		}
 	} );
 

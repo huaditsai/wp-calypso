@@ -22,6 +22,7 @@ import SidebarActions from 'lib/reader-sidebar/actions';
 import SidebarFooter from 'layout/sidebar/footer';
 import SidebarHeading from 'layout/sidebar/heading';
 import SidebarMenu from 'layout/sidebar/menu';
+import SidebarRegion from 'layout/sidebar/region';
 import Gridicon from 'components/gridicon';
 import discoverHelper from 'reader/discover/helper';
 import ReaderSidebarTags from './reader-sidebar-tags';
@@ -86,7 +87,7 @@ const ReaderSidebar = React.createClass( {
 	},
 
 	handleClick( event ) {
-		if ( ! event.isDefaultPrevented() && ! closest( event.target, 'input,textarea', true ) ) {
+		if ( ! event.isDefaultPrevented() && closest( event.target, 'a,span', true ) ) {
 			layoutFocus.setNext( 'content' );
 			window.scrollTo( 0, 0 );
 		}
@@ -108,7 +109,7 @@ const ReaderSidebar = React.createClass( {
 		const pathParts = this.props.path.split( '/' );
 
 		if ( startsWith( this.props.path, '/tag/' ) ) {
-			const tagSlug = pathParts[2];
+			const tagSlug = pathParts[ 2 ];
 			if ( tagSlug ) {
 				// Open the sidebar
 				if ( ! this.props.isTagsOpen ) {
@@ -119,8 +120,8 @@ const ReaderSidebar = React.createClass( {
 		}
 
 		if ( startsWith( this.props.path, '/read/list/' ) ) {
-			const listOwner = pathParts[3];
-			const listSlug = pathParts[4];
+			const listOwner = pathParts[ 3 ];
+			const listSlug = pathParts[ 4 ];
 			if ( listOwner && listSlug ) {
 				// Open the sidebar
 				if ( ! this.props.isListsOpen ) {
@@ -135,7 +136,7 @@ const ReaderSidebar = React.createClass( {
 		// if promo not configured return
 		if ( ! config.isEnabled( 'desktop-promo' ) ) {
 			return;
-		};
+		}
 
 		// if user settings not loaded, return so we dont show
 		// before we can check if user is already a desktop user
@@ -157,6 +158,7 @@ const ReaderSidebar = React.createClass( {
 	render() {
 		return (
 			<Sidebar onClick={ this.handleClick }>
+				<SidebarRegion>
 				<SidebarMenu>
 					<SidebarHeading>{ this.translate( 'Streams' ) }</SidebarHeading>
 					<ul>
@@ -239,7 +241,10 @@ const ReaderSidebar = React.createClass( {
 					onTagExists={ this.highlightNewTag }
 					currentTag={ this.state.currentTag } />
 
+				</SidebarRegion>
+
 				{ this.renderAppPromo() }
+
 				<SidebarFooter />
 			</Sidebar>
 		);

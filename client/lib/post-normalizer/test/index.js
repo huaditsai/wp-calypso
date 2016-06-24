@@ -687,7 +687,7 @@ describe( 'index', function() {
 					content: '<iframe src="http://example.com"></iframe>'
 				},
 				[ normalizer.withContentDOM( [ normalizer.content.makeEmbedsSecure ] ) ], function( err, normalized ) {
-					assert.strictEqual( normalized.content, '<iframe src="https://example.com" sandbox=""></iframe>' );
+					assert.strictEqual( normalized.content, '<iframe src="https://example.com/" sandbox=""></iframe>' );
 					done( err );
 				}
 			);
@@ -911,7 +911,7 @@ describe( 'index', function() {
 				[
 					normalizer.withContentDOM( [ normalizer.content.detectPolls ] )
 				], function( err, normalized ) {
-					assert.include( normalized.content, '<p><a rel="external" target="_blank" href="http://polldaddy.com/poll/8980420">Take our poll</a></p>' );
+					assert.include( normalized.content, '<p><a rel="external" target="_blank" href="https://polldaddy.com/poll/8980420">Take our poll</a></p>' );
 					done( err );
 				}
 			);

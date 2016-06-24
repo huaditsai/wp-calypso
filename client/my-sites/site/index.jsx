@@ -170,7 +170,7 @@ export default React.createClass( {
 		}
 
 		return (
-			<ExternalLink icon={ true } href={ url } target="_blank" className="site__edit-icon" onCLick={ this.onEditIconClick() }>
+			<ExternalLink icon={ true } href={ url } target="_blank" className="site__edit-icon" onClick={ this.onEditIconClick }>
 				<SiteIcon site={ this.props.site } />
 				<span className="site__edit-icon-text">{ this.translate( 'Edit Icon' ) }</span>
 			</ExternalLink>
@@ -190,11 +190,22 @@ export default React.createClass( {
 	},
 
 	toggleActions() {
+		if ( ! this.state.showMoreActions ) {
+			analytics.mc.bumpStat( 'calypso_site_card', 'toggle_button' );
+		}
 		this.setState( { showMoreActions: ! this.state.showMoreActions } );
 	},
 
-	onEditIconClick() {
-		analytics.mc.bumpStat( 'calypso_site_card', 'edit_icon' );
+	onEditIconClick( event ) {
+		const site = this.props.site;
+
+		if ( event ) {
+			analytics.mc.bumpStat( 'calypso_site_card', 'edit_icon' );
+		}
+
+		if ( event && site && ! site.icon ) {
+			analytics.mc.bumpStat( 'calypso_site_card', 'edit_default_icon' );
+		}
 	},
 
 	render() {

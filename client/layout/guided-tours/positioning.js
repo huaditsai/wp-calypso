@@ -45,7 +45,7 @@ const dialogPositioners = {
 		y: MASTERBAR_HEIGHT / 2 + DIALOG_HEIGHT / 2,
 	} ),
 	right: () => ( {
-		x: document.documentElement.clientWidth - DIALOG_WIDTH - ( 3 * DIALOG_PADDING ),
+		x: Math.max( 0, document.documentElement.clientWidth - DIALOG_WIDTH - ( 3 * DIALOG_PADDING ) ),
 		y: MASTERBAR_HEIGHT + 16,
 	} ),
 };
@@ -59,7 +59,7 @@ export const posToCss = ( { x, y } ) => ( {
 } );
 
 export function targetForSlug( targetSlug ) {
-	return query( '[data-tip-target="' + targetSlug + '"]' )[0];
+	return query( '[data-tip-target="' + targetSlug + '"]' )[ 0 ];
 }
 
 export function getValidatedArrowPosition( { targetSlug, arrow, stepPos } ) {
@@ -103,6 +103,13 @@ export function getStepPosition( { placement = 'center', targetSlug } ) {
 	};
 }
 
+export function getScrollableSidebar() {
+	if ( viewport.isMobile() ) {
+		return query( '#secondary .sidebar' )[ 0 ];
+	}
+	return query( '#secondary .sidebar .sidebar__region' )[ 0 ];
+}
+
 function validatePlacement( placement, target ) {
 	const targetSlug = target && target.dataset && target.dataset.tipTarget;
 
@@ -110,7 +117,7 @@ function validatePlacement( placement, target ) {
 		return 'middle';
 	}
 
-	return ( placement !== 'center' && viewport.isMobile() )
+	return ( target && placement !== 'center' && viewport.isMobile() )
 		? 'below'
 		: placement;
 }
@@ -122,16 +129,15 @@ function scrollIntoView( target ) {
 		return 0;
 	}
 
+	const container = getScrollableSidebar();
 	const { top, bottom } = target.getBoundingClientRect();
+	const clientHeight = viewport.isMobile() ? document.documentElement.clientHeight : container.clientHeight;
 
-	if ( bottom + DIALOG_PADDING + DIALOG_HEIGHT <=
-			document.documentElement.clientHeight ) {
+	if ( bottom + DIALOG_PADDING + DIALOG_HEIGHT <= clientHeight ) {
 		return 0;
 	}
 
-	const container = query( '#secondary .sidebar' )[ 0 ];
-	const scrollMax = container.scrollHeight -
-		container.clientHeight - container.scrollTop;
+	const scrollMax = container.scrollHeight - clientHeight - container.scrollTop;
 	const y = Math.min( .75 * top, scrollMax );
 
 	scrollTo( { y, container } );

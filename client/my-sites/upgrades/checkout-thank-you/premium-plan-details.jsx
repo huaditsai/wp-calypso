@@ -16,6 +16,7 @@ import { isPremium } from 'lib/products-values';
 import paths from 'lib/paths';
 import PurchaseDetail from 'components/purchase-detail';
 import QuerySiteVouchers from 'components/data/query-site-vouchers';
+import { isGoogleVouchersEnabled } from 'lib/plans';
 
 const PremiumPlanDetails = ( { selectedSite, sitePlans, selectedFeature } ) => {
 	const adminUrl = selectedSite.URL + '/wp-admin/',
@@ -24,8 +25,6 @@ const PremiumPlanDetails = ( { selectedSite, sitePlans, selectedFeature } ) => {
 
 	return (
 		<div>
-			{ config.isEnabled( 'google-voucher' ) && <QuerySiteVouchers siteId={ selectedSite.ID } /> }
-
 			{ plan.hasDomainCredit && <CustomDomainPurchaseDetail selectedSite={ selectedSite } /> }
 
 			<PurchaseDetail
@@ -33,15 +32,15 @@ const PremiumPlanDetails = ( { selectedSite, sitePlans, selectedFeature } ) => {
 				title={ i18n.translate( 'No Ads' ) }
 				description={
 					i18n.translate(
-						'Premium plan automatically removes all Ads from your site. ' +
-						'Now your visitors can enjoy your great content without distractions!'
+						'Your plan removes advertising from your site so ' +
+						'your visitors can enjoy your content without distractions!'
 					)
 				}
 			/>
 
-			{
-				config.isEnabled( 'google-voucher' ) &&
-				<div className="purchase-detail__body">
+			{ isGoogleVouchersEnabled() && <QuerySiteVouchers siteId={ selectedSite.ID } /> }
+			{ isGoogleVouchersEnabled() &&
+				<div>
 					<GoogleVoucherDetails selectedSite={ selectedSite } />
 				</div>
 			}
@@ -80,7 +79,7 @@ const PremiumPlanDetails = ( { selectedSite, sitePlans, selectedFeature } ) => {
 					description={
 						i18n.translate(
 							'Take advantage of WordAds instant activation on your upgraded site. ' +
-							'WordAds lets you display promotional content and earn money.'
+							'WordAds lets you earn money by displaying promotional content.'
 						)
 					}
 					buttonText={ i18n.translate( 'Start Earning' ) }

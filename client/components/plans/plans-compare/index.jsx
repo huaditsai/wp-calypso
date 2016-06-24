@@ -15,7 +15,7 @@ import { abtest } from 'lib/abtest';
 import analytics from 'lib/analytics';
 import Card from 'components/card';
 import { fetchSitePlans } from 'state/sites/plans/actions';
-import { filterPlansBySiteAndProps, shouldFetchSitePlans } from 'lib/plans';
+import { filterPlansBySiteAndProps, shouldFetchSitePlans, isGoogleVouchersEnabled, isWordpressAdCreditsEnabled } from 'lib/plans';
 import { getPlans } from 'state/plans/selectors';
 import { getPlansBySite } from 'state/sites/plans/selectors';
 import Gridicon from 'components/gridicon';
@@ -31,7 +31,7 @@ import SectionNav from 'components/section-nav';
 import SidebarNavigation from 'my-sites/sidebar-navigation';
 import { SUBMITTING_WPCOM_REQUEST } from 'lib/store-transactions/step-types';
 import QueryPlans from 'components/data/query-plans';
-import config from 'config';
+import { isEnabled } from 'config';
 import InfoPopover from 'components/info-popover';
 import { isJetpack } from 'lib/site/utils';
 import {
@@ -44,11 +44,11 @@ import {
 const googleAdCredits = featuresList[ FEATURE_GOOGLE_AD_CREDITS ];
 const googleAdCreditsFeature = {
 	title: googleAdCredits.getTitle(),
-	compareDescription: googleAdCredits.getDescription(),
+	compareDescription: isWordpressAdCreditsEnabled() ? googleAdCredits.getDescriptionWithWordAdsCredit() : googleAdCredits.getDescription(),
 	product_slug: FEATURE_GOOGLE_AD_CREDITS,
 	1: false,
 	1003: '$100',
-	1008: '$100'
+	1008: isWordpressAdCreditsEnabled() ? '$200' : '$100'
 };
 // WordAds instant activation feature
 const wordAdsInstant = featuresList[ WORDADS_INSTANT ];
@@ -60,6 +60,8 @@ const wordAdsFeature = {
 	1008: true,
 	product_slug: WORDADS_INSTANT,
 };
+
+const personalPlanTestEnabled = abtest( 'personalPlan' ) === 'show' && isEnabled( 'plans/personal-plan' );
 
 const PlansCompare = React.createClass( {
 	mixins: [ observe( 'features' ) ],
@@ -94,7 +96,16 @@ const PlansCompare = React.createClass( {
 
 	getPlanURL() {
 		const selectedSite = this.props.selectedSite;
-		return selectedSite ? `/plans/${ selectedSite.slug }` : '/plans';
+		let url = '/plans';
+
+		if ( 'monthly' === this.props.intervalType ) {
+			url += '/monthly';
+		}
+
+		if ( selectedSite ) {
+			url += '/' + selectedSite.slug;
+		}
+		return url;
 	},
 
 	goBack() {
@@ -149,7 +160,7 @@ const PlansCompare = React.createClass( {
 	},
 
 	getColumnCount() {
-		const colsCount = abtest( 'personalPlan' ) === 'hide' ? 4 : 5;
+		const colsCount = personalPlanTestEnabled ? 5 : 4;
 
 		if ( ! this.props.selectedSite || ! this.props.selectedSite.jetpack ) {
 			return colsCount;
@@ -163,7 +174,7 @@ const PlansCompare = React.createClass( {
 		const plans = this.getPlans();
 		const { selectedSite } = this.props;
 
-		let features = this.props.features.get().filter( ( feature ) => {
+		const features = this.props.features.get().filter( ( feature ) => {
 			return plans.some( plan => {
 				return feature[ plan.product_id ];
 			} );
@@ -174,11 +185,11 @@ const PlansCompare = React.createClass( {
 		}
 
 		// add google-ad-credits feature
-		if ( config.isEnabled( 'google-voucher' ) ) {
+		if ( isGoogleVouchersEnabled() ) {
 			features.splice( 1, 0, googleAdCreditsFeature );
 		}
 
-		if ( config.isEnabled( 'manage/ads/wordads-instant' ) && abtest( 'wordadsInstantActivation' ) === 'enabled' ) {
+		if ( isEnabled( 'manage/ads/wordads-instant' ) && abtest( 'wordadsInstantActivation' ) === 'enabled' ) {
 			features.splice( 6, 0, wordAdsFeature );
 		}
 
@@ -189,7 +200,8 @@ const PlansCompare = React.createClass( {
 		return filterPlansBySiteAndProps(
 			this.props.plans,
 			this.props.selectedSite,
-			this.props.hideFreePlan
+			this.props.hideFreePlan,
+			this.props.intervalType
 		);
 	},
 
@@ -416,7 +428,7 @@ const PlansCompare = React.createClass( {
 				<SectionNav selectedText={ text[ this.state.selectedPlan ] }>
 					<NavTabs>
 						{ freeOption }
-						{ abtest( 'personalPlan' ) === 'show' &&
+						{ personalPlanTestEnabled &&
 						<NavItem
 							onClick={ this.setPlan.bind( this, 'personal' ) }
 							selected={ 'personal' === this.state.selectedPlan }>

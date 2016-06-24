@@ -73,6 +73,9 @@ export default React.createClass( {
 		if ( ! feature && ! isFreePlan( site.plan ) ) {
 			return false;
 		}
+		if ( feature === 'no-adverts' && site.options.wordads ) {
+			return false;
+		}
 		if ( ! jetpack && site.jetpack || jetpack && ! site.jetpack ) {
 			return false;
 		}
@@ -91,7 +94,7 @@ export default React.createClass( {
 
 		if ( ! this.props.href && site ) {
 			if ( this.props.feature ) {
-				href = `/plans/compare/${ this.props.feature }/${ site.slug }`;
+				href = `/plans/compare/${ site.slug }?feature=${ this.props.feature }`;
 			} else {
 				href = `/plans/${ site.slug }`;
 			}

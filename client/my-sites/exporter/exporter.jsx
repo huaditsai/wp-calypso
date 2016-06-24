@@ -7,6 +7,8 @@ import React, { PropTypes } from 'react';
  * Internal dependencies
  */
 import FoldableCard from 'components/foldable-card';
+import GuidedTransferOptions from 'my-sites/exporter/guided-transfer-options';
+import GuidedTransferDetails from 'my-sites/exporter/guided-transfer-details';
 import AdvancedSettings from 'my-sites/exporter/advanced-settings';
 import SpinnerButton from './spinner-button';
 import Interval, { EVERY_SECOND } from 'lib/interval';
@@ -21,9 +23,10 @@ export default React.createClass( {
 		startExport: PropTypes.func.isRequired,
 		setPostType: PropTypes.func.isRequired,
 		advancedSettingsFetch: PropTypes.func.isRequired,
-
+		showGuidedTransferOptions: PropTypes.bool,
 		shouldShowProgress: PropTypes.bool.isRequired,
 		postType: PropTypes.string,
+		siteSlug: PropTypes.string,
 		siteId: PropTypes.number
 	},
 
@@ -45,6 +48,7 @@ export default React.createClass( {
 			postType,
 			shouldShowProgress,
 			isExporting,
+			showGuidedTransferOptions,
 		} = this.props;
 		const siteId = this.props.site.ID;
 
@@ -62,7 +66,7 @@ export default React.createClass( {
 				loadingText={ this.translate( 'Exporting…' ) } />
 		);
 
-		var notice = null;
+		let notice = null;
 		if ( this.props.didComplete ) {
 			notice = (
 				<Notice
@@ -115,6 +119,8 @@ export default React.createClass( {
 						onClickExport={ exportSelectedItems }
 					/>
 				</FoldableCard>
+				{ showGuidedTransferOptions && <GuidedTransferOptions siteSlug={ this.props.siteSlug } /> }
+				{ showGuidedTransferOptions && <GuidedTransferDetails /> }
 				{ isExporting && <Interval onTick={ fetchStatus } period={ EVERY_SECOND } /> }
 			</div>
 		);

@@ -48,6 +48,7 @@ const EditCardDetails = React.createClass( {
 	getInitialState() {
 		return {
 			form: null,
+			formSubmitting: false,
 			notice: null
 		};
 	},
@@ -68,7 +69,7 @@ const EditCardDetails = React.createClass( {
 	 * @param card
 	 * @param fields
 	 */
-	mergeCard( card, fields: {} ) {
+	mergeCard( card, fields = {} ) {
 		return assign( {}, fields, {
 			name: card.name
 		} );
@@ -95,6 +96,8 @@ const EditCardDetails = React.createClass( {
 
 	componentWillReceiveProps( nextProps ) {
 		this.redirectIfDataIsInvalid( nextProps );
+
+		recordPageView( 'edit_card_details', this.props, nextProps );
 	},
 
 	validate( formValues, onComplete ) {
@@ -139,8 +142,15 @@ const EditCardDetails = React.createClass( {
 	onSubmit( event ) {
 		event.preventDefault();
 
+		if ( this.state.formSubmitting ) {
+			return;
+		}
+
+		this.setState( { formSubmitting: true } );
+
 		this.formStateController.handleSubmit( ( hasErrors ) => {
 			if ( hasErrors ) {
+				this.setState( { formSubmitting: false } );
 				return;
 			}
 
@@ -158,17 +168,20 @@ const EditCardDetails = React.createClass( {
 
 		createPaygateToken( 'card_update', cardDetails, ( paygateError, token ) => {
 			if ( paygateError ) {
+				this.setState( { formSubmitting: false } );
 				notices.error( paygateError.message );
 				return;
 			}
 
 			wpcom.updateCreditCard( this.getParamsForApi( token ), ( apiError, response ) => {
 				if ( apiError ) {
+					this.setState( { formSubmitting: false } );
 					notices.error( apiError.message );
 					return;
 				}
 
 				if ( response.error ) {
+					this.setState( { formSubmitting: false } );
 					notices.error( response.error );
 					return;
 				}
@@ -266,8 +279,12 @@ const EditCardDetails = React.createClass( {
 					<CompactCard className="edit-card-details__footer">
 						<em>{ this.translate( 'All fields required' ) }</em>
 
-						<FormButton type="submit">
-							{ this.translate( 'Save Card', { context: 'Button label', comment: 'Credit card' } ) }
+						<FormButton
+							disabled={ this.state.formSubmitting }
+							type="submit">
+							{ this.state.formSubmitting
+								? this.translate( 'Saving Card…', { context: 'Button label', comment: 'Credit card' } )
+								: this.translate( 'Save Card', { context: 'Button label', comment: 'Credit card' } ) }
 						</FormButton>
 					</CompactCard>
 				</form>

@@ -15,15 +15,18 @@ var cartItems = require( 'lib/cart-values' ).cartItems,
 	DomainRegistrationSuggestion = require( 'components/domains/domain-registration-suggestion' ),
 	DomainProductPrice = require( 'components/domains/domain-product-price' ),
 	analyticsMixin = require( 'lib/mixins/analytics' ),
+	abtest = require( 'lib/abtest' ).abtest,
 	upgradesActions = require( 'lib/upgrades/actions' ),
-	{ getCurrentUser } = require( 'state/current-user/selectors' );
-
+	{ getCurrentUser } = require( 'state/current-user/selectors' ),
+	support = require( 'lib/url/support' );
 
 var MapDomainStep = React.createClass( {
 	mixins: [ analyticsMixin( 'mapDomain' ) ],
 
 	propTypes: {
 		products: React.PropTypes.object.isRequired,
+		cart: React.PropTypes.object,
+		selectedSite: React.PropTypes.oneOfType( [ React.PropTypes.object, React.PropTypes.bool ] ),
 		initialQuery: React.PropTypes.string,
 		analyticsSection: React.PropTypes.string.isRequired
 	},
@@ -55,7 +58,8 @@ var MapDomainStep = React.createClass( {
 	},
 
 	render: function() {
-		var price = this.props.products.domain_map ? this.props.products.domain_map.cost_display : null;
+		const suggestion = { cost: this.props.products.domain_map.cost_display, product_slug: this.props.products.domain_map.product_slug },
+			price = this.props.products.domain_map ? this.props.products.domain_map.cost_display : null;
 
 		return (
 			<div className="map-domain-step">
@@ -72,8 +76,8 @@ var MapDomainStep = React.createClass( {
 					</div>
 
 					<DomainProductPrice
-						price={ price }
-						cart={ this.props.cart } />
+						rule={ cartItems.getDomainPriceRule( abtest( 'domainsWithPlansOnly' ) === 'plansOnly', this.props.selectedSite, this.props.cart, suggestion ) }
+						price={ price } />
 
 					<fieldset>
 						<input
@@ -117,6 +121,8 @@ var MapDomainStep = React.createClass( {
 				</div>
 				<DomainRegistrationSuggestion
 					suggestion={ suggestion }
+					selectedSite={ this.props.selectedSite }
+					withPlansOnly={ abtest( 'domainsWithPlansOnly' ) === 'plansOnly' }
 					key={ suggestion.domain_name }
 					cart={ this.props.cart }
 					onButtonClick={ this.registerSuggestedDomain } />
@@ -205,7 +211,7 @@ var MapDomainStep = React.createClass( {
 								?email=${ this.props.currentUser && encodeURIComponent( this.props.currentUser.email ) || '' }
 								&domain=${ domain }` }/>
 						}
-				} );
+					} );
 				severity = 'info';
 				break;
 			case 'not_mappable':
@@ -231,9 +237,22 @@ var MapDomainStep = React.createClass( {
 				break;
 
 			case 'blacklisted_domain':
-				message = this.translate( 'Sorry but %(domain)s cannot be mapped to a WordPress.com blog.', {
-					args: { domain: domain }
-				} );
+				if ( domain.toLowerCase().indexOf( 'wordpress' ) > -1 ) {
+					message = this.translate(
+						'Due to {{a1}}trademark policy{{/a1}}, we are not able to allow domains containing {{strong}}WordPress{{/strong}} to be registered or mapped here. Please {{a2}}contact support{{/a2}} if you have any questions.',
+						{
+							components: {
+								strong: <strong />,
+								a1: <a target="_blank" href="http://wordpressfoundation.org/trademark-policy/"/>,
+								a2: <a href={ support.CALYPSO_CONTACT }/>
+							}
+						}
+					);
+				} else {
+					message = this.translate( 'Sorry but %(domain)s cannot be mapped to a WordPress.com blog.', {
+						args: { domain: domain }
+					} );
+				}
 				break;
 
 			case 'forbidden_domain':

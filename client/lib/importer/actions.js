@@ -3,6 +3,7 @@
  */
 import Dispatcher from 'dispatcher';
 import includes from 'lodash/includes';
+import flowRight from 'lodash/flowRight';
 import partial from 'lodash/partial';
 const wpcom = require( 'lib/wp' ).undocumented();
 
@@ -103,13 +104,11 @@ export function cancelImport( siteId, importerId ) {
 		.catch( apiFailure );
 }
 
-export function failUpload( importerId, { message: error } ) {
-	Dispatcher.handleViewAction( {
-		type: IMPORTS_UPLOAD_FAILED,
-		importerId,
-		error
-	} );
-}
+export const failUpload = importerId => ( { message: error } ) => ( {
+	type: IMPORTS_UPLOAD_FAILED,
+	importerId,
+	error
+} );
 
 export function fetchState( siteId ) {
 	apiStart();
@@ -122,21 +121,18 @@ export function fetchState( siteId ) {
 		.catch( apiFailure );
 }
 
-export function finishUpload( importerId, importerStatus ) {
-	Dispatcher.handleViewAction( {
-		type: IMPORTS_UPLOAD_COMPLETED,
-		importerId, importerStatus
-	} );
-}
+export const finishUpload = importerId => importerStatus => ( {
+	type: IMPORTS_UPLOAD_COMPLETED,
+	importerId,
+	importerStatus
+} );
 
-export function mapAuthor( importerId, sourceAuthor, targetAuthor ) {
-	Dispatcher.handleViewAction( {
-		type: IMPORTS_AUTHORS_SET_MAPPING,
-		importerId,
-		sourceAuthor,
-		targetAuthor
-	} );
-}
+export const mapAuthor = ( importerId, sourceAuthor, targetAuthor ) => ( {
+	type: IMPORTS_AUTHORS_SET_MAPPING,
+	importerId,
+	sourceAuthor,
+	targetAuthor
+} );
 
 export function resetImport( siteId, importerId ) {
 	// We are done with this import session, so lock it away
@@ -166,26 +162,24 @@ export function startMappingAuthors( importerId ) {
 	} );
 }
 
-export function setUploadProgress( importerId, data ) {
-	Dispatcher.handleViewAction( {
-		type: IMPORTS_UPLOAD_SET_PROGRESS,
-		uploadLoaded: data.uploadLoaded,
-		uploadTotal: data.uploadTotal,
-		importerId
-	} );
-}
+export const setUploadProgress = ( importerId, data ) => ( {
+	type: IMPORTS_UPLOAD_SET_PROGRESS,
+	uploadLoaded: data.uploadLoaded,
+	uploadTotal: data.uploadTotal,
+	importerId
+} );
 
-export function startImport( siteId, importerType ) {
+export const startImport = ( siteId, importerType ) => {
 	// Use a fake ID until the server returns the real one
 	let importerId = `${ ID_GENERATOR_PREFIX }${ Math.round( Math.random() * 10000 ) }`;
 
-	Dispatcher.handleViewAction( {
+	return {
 		type: IMPORTS_IMPORT_START,
 		importerId,
 		importerType,
 		siteId
-	} );
-}
+	};
+};
 
 export function startImporting( importerStatus ) {
 	const { importerId, site: { ID: siteId } } = importerStatus;
@@ -200,7 +194,7 @@ export function startImporting( importerStatus ) {
 	wpcom.updateImporter( siteId, importOrder( importerStatus ) );
 }
 
-export function startUpload( importerStatus, file ) {
+export const startUpload = ( importerStatus, file ) => dispatch => {
 	let { importerId, site: { ID: siteId } } = importerStatus;
 
 	wpcom
@@ -208,21 +202,21 @@ export function startUpload( importerStatus, file ) {
 			importStatus: toApi( importerStatus ),
 			file,
 
-			onprogress: event => {
+			onprogress: event => dispatch(
 				setUploadProgress( importerId, {
 					uploadLoaded: event.loaded,
 					uploadTotal: event.total
-				} );
-			},
+				} )
+			),
 
 			onabort: () => cancelImport( siteId, importerId )
 		} )
 		.then( data => Object.assign( data, { siteId } ) )
 		.then( fromApi )
-		.then( partial( finishUpload, importerId ) )
-		.catch( partial( failUpload, importerId ) );
+		.then( flowRight( dispatch, finishUpload( importerId ) ) )
+		.catch( flowRight( dispatch, failUpload( importerId ) ) );
 
-	Dispatcher.handleViewAction( {
+	dispatch( {
 		type: IMPORTS_UPLOAD_START,
 		filename: file.name,
 		importerId

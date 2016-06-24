@@ -10,11 +10,10 @@ import { localize } from 'i18n-calypso';
  * Internal dependencies
  */
 import scrollTo from 'lib/scroll-to';
-import { getSelectedSite } from 'state/ui/selectors';
 import { getGuidedTourState } from 'state/ui/guided-tours/selectors';
 import { nextGuidedTourStep, quitGuidedTour } from 'state/ui/guided-tours/actions';
 import { errorNotice } from 'state/notices/actions';
-import { query } from './positioning';
+import { getScrollableSidebar, query } from './positioning';
 import {
 	BasicStep,
 	FirstStep,
@@ -92,7 +91,7 @@ class GuidedTours extends Component {
 
 	quit( options = {} ) {
 		// TODO: put into step specific callback?
-		const sidebar = query( '#secondary .sidebar' )[ 0 ];
+		const sidebar = getScrollableSidebar();
 		scrollTo( { y: 0, container: sidebar } );
 
 		this.currentTarget && this.currentTarget.classList.remove( 'guided-tours__overlay' );
@@ -107,6 +106,7 @@ class GuidedTours extends Component {
 
 	render() {
 		const { stepConfig } = this.props.tourState;
+		debug( 'GuidedTours#render() tourState', this.props.tourState );
 
 		if ( ! stepConfig ) {
 			return null;
@@ -134,7 +134,6 @@ class GuidedTours extends Component {
 }
 
 export default connect( ( state ) => ( {
-	selectedSite: getSelectedSite( state ),
 	tourState: getGuidedTourState( state ),
 } ), {
 	nextGuidedTourStep,

@@ -94,7 +94,7 @@ class GoogleVoucherDetails extends Component {
 
 	getVoucher( props = this.props ) {
 		const { googleAdCredits } = props;
-		return googleAdCredits.length > 0 ? googleAdCredits[0] : {};
+		return googleAdCredits.length > 0 ? googleAdCredits[ 0 ] : {};
 	}
 
 	renderInitialStep() {
@@ -161,13 +161,16 @@ class GoogleVoucherDetails extends Component {
 						{
 							this.props.translate( 'Copy this unique, one-time use code to your clipboard and setup your Google AdWords account. {{a}}View help guide{{/a}}',
 								{
-									components: { a: <a className="google-voucher-code__help-link" href="#" target="_blank" /> }
+									components: {
+										a: <a className="google-voucher-code__help-link" href="https://en.support.wordpress.com/google-adwords-credit/" target="_blank" />
+									}
 								}
 							)
 						}
 					</p>
 
 					<PurchaseButton
+						className="google-voucher-code__setup-google-adwords"
 						href="https://www.google.com/adwords/"
 						target="_blank"
 						text={ this.props.translate( 'Setup Google AdWords' ) } />

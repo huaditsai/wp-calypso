@@ -1,9 +1,11 @@
 /**
  * External dependencies
  */
+import get from 'lodash/get';
 import map from 'lodash/map';
 import omit from 'lodash/omit';
 import property from 'lodash/property';
+import debugModule from 'debug';
 
 /**
  * Internal dependencies
@@ -13,10 +15,16 @@ import {
 	READER_START_RECOMMENDATIONS_RECEIVE,
 	READER_START_RECOMMENDATIONS_REQUEST,
 	READER_START_RECOMMENDATIONS_REQUEST_SUCCESS,
-	READER_START_RECOMMENDATIONS_REQUEST_FAILURE
+	READER_START_RECOMMENDATIONS_REQUEST_FAILURE,
+	READER_START_RECOMMENDATION_INTERACTION
 } from 'state/action-types';
 import { updateSites } from 'state/reader/sites/actions';
 import { receivePosts } from 'state/reader/posts/actions';
+
+/**
+ * Module variables
+ */
+const debug = debugModule( 'calypso:redux:reader-start-recommendations' );
 
 /**
  * Returns an action object to signal that recommendation objects have been received.
@@ -32,21 +40,64 @@ export function receiveRecommendations( recommendations ) {
 }
 
 /**
+ * Returns an action object to signal that a recommendation has been interacted with.
+ *
+ * @param  {Integer} recommendationId Recommendation ID
+ * @param  {Integer} siteId Site ID
+ * @param  {Integer} postId Post ID
+ * @return {Function} Action thunk
+ */
+export function recordRecommendationInteraction( recommendationId, siteId, postId ) {
+	return( dispatch ) => {
+		debug( 'User interacted with recommendation ' + recommendationId );
+		const numberOfRecommendationsToLoad = 3;
+		dispatch( requestRecommendations( siteId, postId, numberOfRecommendationsToLoad ) );
+		dispatch( {
+			type: READER_START_RECOMMENDATION_INTERACTION,
+			recommendationId
+		} );
+	};
+}
+
+/**
  * Triggers a network request to fetch recommendations.
  *
- * @return {Function}        Action thunk
+ * @param  {Integer} originSiteId Origin site ID
+ * @param  {Integer} originPostId Origin post ID
+ * @param  {Integer} limit Maximum number of results to return
+ * @return {Function} Action thunk
  */
-export function requestRecommendations() {
+export function requestRecommendations( originSiteId, originPostId, limit ) {
 	return ( dispatch ) => {
 		dispatch( {
 			type: READER_START_RECOMMENDATIONS_REQUEST,
 		} );
 
-		return wpcom.undocumented().readRecommendationsStart( { meta: 'site,post' } )
+		if ( ! limit ) {
+			limit = 20;
+		}
+
+		const query = {
+			meta: 'site,post',
+			origin_site_ID: originSiteId,
+			origin_post_ID: originPostId,
+			number: limit
+		};
+
+		debug( 'Requesting recommendations for site ' + originSiteId + ' and post ' + originPostId );
+
+		return wpcom.undocumented().readRecommendationsStart( query )
 			.then( ( data ) => {
 				// Collect sites and posts from meta, and receive them separately
 				const sites = map( data.recommendations, property( 'meta.data.site' ) );
-				const posts = map( data.recommendations, property( 'meta.data.post' ) );
+				const posts = map( data.recommendations, rec => {
+					// attach railcar to post if available and return the post
+					const post = get( rec, 'meta.data.post' );
+					if ( post && rec.railcar ) {
+						post.railcar = rec.railcar;
+					}
+					return post;
+				} );
 				dispatch( updateSites( sites ) );
 
 				return dispatch( receivePosts( posts ) ).then( () => {

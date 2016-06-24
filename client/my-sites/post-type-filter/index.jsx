@@ -109,7 +109,7 @@ const PostTypeFilter = React.createClass( {
 
 		return (
 			<div>
-				{ siteId && (
+				{ query && siteId && (
 					<QueryPostCounts
 						siteId={ siteId }
 						type={ query.type } />
@@ -127,7 +127,8 @@ const PostTypeFilter = React.createClass( {
 						</NavTabs>,
 						<Search
 							key="search"
-							pinned={ true }
+							pinned
+							fitsContainer
 							onSearch={ this.doSearch }
 							placeholder={ this.translate( 'Search…' ) }
 							delaySearch={ true } />

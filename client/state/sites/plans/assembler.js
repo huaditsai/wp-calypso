@@ -7,6 +7,7 @@ const createSitePlanObject = ( plan ) => {
 	if ( ! plan ) {
 		return {};
 	}
+
 	return {
 		canStartTrial: Boolean( plan.can_start_trial ),
 		currentPlan: Boolean( plan.current_plan ),
@@ -18,6 +19,7 @@ const createSitePlanObject = ( plan ) => {
 		freeTrial: Boolean( plan.free_trial ),
 		hasDomainCredit: Boolean( plan.has_domain_credit ),
 		id: Number( plan.id ),
+		interval: Number( plan.interval ),
 		productName: plan.product_name,
 		productSlug: plan.product_slug,
 		rawDiscount: plan.raw_discount,

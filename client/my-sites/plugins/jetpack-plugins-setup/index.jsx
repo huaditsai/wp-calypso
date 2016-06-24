@@ -22,12 +22,15 @@ import PluginIcon from 'my-sites/plugins/plugin-icon/plugin-icon';
 import JetpackManageErrorPage from 'my-sites/jetpack-manage-error-page';
 import PluginItem from 'my-sites/plugins/plugin-item/plugin-item';
 import JetpackSite from 'lib/site/jetpack';
+import sitesFactory from 'lib/sites-list';
+const sites = sitesFactory();
 
 // Redux actions & selectors
-import { getSelectedSiteId, getSelectedSite } from 'state/ui/selectors';
+import { getSelectedSiteId } from 'state/ui/selectors';
 import { isRequestingSites } from 'state/sites/selectors';
 import { getPlugin } from 'state/plugins/wporg/selectors';
 import { fetchPluginData } from 'state/plugins/wporg/actions';
+import { requestSites } from 'state/sites/actions';
 import {
 	fetchInstallInstructions,
 	installPlugin,
@@ -78,6 +81,7 @@ const PlansSetup = React.createClass( {
 
 	componentDidMount() {
 		window.addEventListener( 'beforeunload', this.warnIfNotFinished );
+		this.props.requestSites();
 		if ( this.props.siteId ) {
 			this.fetchInstallInstructions();
 		}
@@ -107,6 +111,9 @@ const PlansSetup = React.createClass( {
 
 	warnIfNotFinished( event ) {
 		if ( this.props.isFinished ) {
+			return;
+		}
+		if ( ! this.props.selectedSite.canManage() ) {
 			return;
 		}
 		const beforeUnloadText = this.translate( 'We haven\'t finished installing your plugins.' );
@@ -221,7 +228,7 @@ const PlansSetup = React.createClass( {
 			}
 			statusProps.children = (
 				<NoticeAction key="notice_action" href={ helpLinks[ plugin.slug ] }>
-					{ "Manual Installation" }
+					{ this.translate( 'Manual Installation' ) }
 				</NoticeAction>
 			);
 		} else {
@@ -242,6 +249,7 @@ const PlansSetup = React.createClass( {
 					break;
 				case 'install':
 					statusProps.text = this.translate( 'Working…' );
+					break;
 				case 'wait':
 				default:
 					statusProps.text = this.translate( 'Waiting to install' );
@@ -265,6 +273,31 @@ const PlansSetup = React.createClass( {
 		}
 
 		return null;
+	},
+
+	renderSuccess() {
+		const site = this.props.selectedSite;
+		if ( ! this.props.hasRequested || ! this.props.isFinished ) {
+			return null;
+		}
+
+		const pluginsWithErrors = filter( this.props.plugins, ( item ) => {
+			return ( item.error !== null );
+		} );
+
+		if ( pluginsWithErrors.length ) {
+			return (
+				<Notice status="is-info" text={ this.translate( 'There were some issues installing your plugins. See the links below.' ) } showDismiss={ false } />
+			);
+		}
+
+		return (
+			<Notice status="is-success" text={ this.translate( 'We\'ve installed your plugins, your site is powered up!' ) } showDismiss={ false }>
+				<NoticeAction href={ `/stats/insights/${site.slug}` }>
+					{ this.translate( 'Continue' ) }
+				</NoticeAction>
+			</Notice>
+		);
 	},
 
 	renderPlaceholder() {
@@ -302,6 +335,7 @@ const PlansSetup = React.createClass( {
 
 		let turnOnManage;
 		if ( site && ! site.canManage() ) {
+			const manageUrl = site.getRemoteManagementURL() + '&section=plugins';
 			turnOnManage = (
 				<Card className="jetpack-plugins-setup__need-manage">
 					<p>{
@@ -310,8 +344,8 @@ const PlansSetup = React.createClass( {
 							components: { strong: <strong /> }
 						} )
 					}</p>
-					<Button primary>Enable Manage</Button>
-					<Button>Manual Installation</Button>
+					<Button primary href={ manageUrl }>{ this.translate( 'Enable Manage' ) }</Button>
+					<Button href="https://en.support.wordpress.com/setting-up-premium-services/">{ this.translate( 'Manual Installation' ) }</Button>
 				</Card>
 			);
 		}
@@ -321,6 +355,7 @@ const PlansSetup = React.createClass( {
 				<h1 className="jetpack-plugins-setup__header">{ this.translate( 'Setting up your %(plan)s Plan', { args: { plan: site.plan.product_name_short } } ) }</h1>
 				<p className="jetpack-plugins-setup__description">{ this.translate( 'We need to install a few plugins for you. It won\'t take long!' ) }</p>
 				{ turnOnManage }
+				{ ! turnOnManage && this.renderSuccess() }
 				{ turnOnManage
 					? <FeatureExample>{ this.renderPlugins( true ) }</FeatureExample>
 					: this.renderPlugins( false )
@@ -333,8 +368,7 @@ const PlansSetup = React.createClass( {
 export default connect(
 	state => {
 		const siteId = getSelectedSiteId( state );
-		const site = getSelectedSite( state );
-
+		const site = sites.getSelectedSite();
 		return {
 			wporg: state.plugins.wporg.items,
 			isRequesting: isRequesting( state, siteId ),
@@ -349,5 +383,5 @@ export default connect(
 			siteId
 		};
 	},
-	dispatch => bindActionCreators( { fetchPluginData, fetchInstallInstructions, installPlugin }, dispatch )
+	dispatch => bindActionCreators( { requestSites, fetchPluginData, fetchInstallInstructions, installPlugin }, dispatch )
 )( PlansSetup );

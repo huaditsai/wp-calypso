@@ -203,11 +203,11 @@
 	}
 
 	blockquote {
-		padding: 16px 24px;
+		padding: 0 24px 0 32px;
 		margin: 16px 0 32px;
+		border-left: 3px solid lighten( $gray, 30% );
 		color: darken( $gray, 20% );
 		font-weight: normal;
-		font-size: 20px;
 		background: transparent;
 	}
 
@@ -259,6 +259,7 @@
 
 	.aligncenter {
 		clear: both;
+		display: block;
 		margin-top: 24px;
 		margin-bottom: 24px;
 	}
@@ -498,7 +499,7 @@
 		transform: translateX( 200px );
 	}
 
-	.card {
+	> .card {
 		margin: 0 auto;
 		background: transparent;
 		padding: 0;

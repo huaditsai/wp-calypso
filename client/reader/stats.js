@@ -1,5 +1,6 @@
 import assign from 'lodash/assign';
 import debugFactory from 'debug';
+import partial from 'lodash/partial';
 
 import { mc, ga, tracks } from 'lib/analytics';
 
@@ -32,7 +33,7 @@ function getLocation() {
 		return 'unknown';
 	}
 
-	let path = window.location.pathname;
+	const path = window.location.pathname;
 	if ( path === '/' ) {
 		return 'following';
 	}
@@ -73,7 +74,7 @@ export function recordFollow( url ) {
 	const source = getLocation();
 	mc.bumpStat( 'reader_follows', source );
 	recordAction( 'followed_blog' );
-	recordGaEvent( 'Clicked Follow Blog', source )
+	recordGaEvent( 'Clicked Follow Blog', source );
 	recordTrack( 'calypso_reader_site_followed', {
 		url,
 		source
@@ -84,7 +85,7 @@ export function recordUnfollow( url ) {
 	const source = getLocation();
 	mc.bumpStat( 'reader_unfollows', source );
 	recordAction( 'unfollowed_blog' );
-	recordGaEvent( 'Clicked Unfollow Blog', source )
+	recordGaEvent( 'Clicked Unfollow Blog', source );
 	recordTrack( 'calypso_reader_site_unfollowed', {
 		url,
 		source
@@ -97,8 +98,33 @@ export function recordTrack( eventName, eventProperties ) {
 	if ( subCount != null ) {
 		eventProperties = Object.assign( { subscription_count: subCount }, eventProperties );
 	}
+	if ( process.env.NODE_ENV !== 'production' ) {
+		if ( 'blog_id' in eventProperties && 'post_id' in eventProperties && ! 'is_jetpack' in eventProperties ) {
+			console.warn( 'consider using recordTrackForPost...', eventName, eventProperties );
+		}
+	}
 	tracks.recordEvent( eventName, eventProperties );
 }
+
+const tracksRailcarEventWhitelist = new Set();
+tracksRailcarEventWhitelist
+	.add( 'calypso_reader_related_post_clicked' )
+	.add( 'calypso_reader_related_post_site_clicked' )
+	.add( 'calypso_reader_article_liked' )
+	.add( 'calypso_reader_article_commented_on' )
+	.add( 'calypso_reader_article_opened' )
+	.add( 'calypso_reader_startcard_clicked' )
+;
+
+export function recordTracksRailcar( action, eventName, railcar ) {
+	// flatten the railcar down into the event props
+	recordTrack( action, Object.assign( {
+		action: eventName.replace( 'calypso_reader_', '' )
+	}, railcar ) );
+}
+
+export const recordTracksRailcarRender = partial( recordTracksRailcar, 'calypso_traintracks_render' );
+export const recordTracksRailcarInteract = partial( recordTracksRailcar, 'calypso_traintracks_interact' );
 
 export function recordTrackForPost( eventName, post = {}, additionalProps = {} ) {
 	recordTrack( eventName, assign( {
@@ -108,10 +134,15 @@ export function recordTrackForPost( eventName, post = {}, additionalProps = {} )
 		feed_item_id: post.feed_item_ID > 0 ? post.feed_item_ID : undefined,
 		is_jetpack: post.is_jetpack
 	}, additionalProps ) );
+	if ( post.railcar && tracksRailcarEventWhitelist.has( eventName ) ) {
+		recordTracksRailcarInteract( eventName, post.railcar );
+	} else if ( process.env.NODE_ENV !== 'production' && post.railcar ) {
+		console.warn( 'Consider whitelisting reader track', eventName );
+	}
 }
 
 export function pageViewForPost( blogId, blogUrl, postId, isPrivate ) {
-	let params = {
+	const params = {
 		ref: 'http://wordpress.com/',
 		reader: 1,
 		host: blogUrl.replace( /.*?:\/\//g, '' ),

@@ -12,6 +12,13 @@ var sections,
 
 sections = [
 	{
+		name: 'sites',
+		paths: [ '/sites' ],
+		module: 'my-sites',
+		group: 'sites',
+		secondary: true
+	},
+	{
 		name: 'customize',
 		paths: [ '/customize' ],
 		module: 'my-sites/customize',
@@ -121,7 +128,8 @@ sections = [
 		paths: [ '/start', '/jetpack' ],
 		module: 'signup',
 		secondary: false,
-		enableLoggedOut: true
+		enableLoggedOut: true,
+		isomorphic: true
 	},
 	{
 		name: 'stats',
@@ -319,7 +327,7 @@ if ( config.isEnabled( 'accept-invite' ) ) {
 if ( config.isEnabled( 'oauth' ) ) {
 	sections.push( {
 		name: 'auth',
-		paths: [ '/login' ],
+		paths: [ '/login', '/authorize', '/api/oauth/token' ],
 		module: 'auth',
 		secondary: false,
 		enableLoggedOut: true

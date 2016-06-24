@@ -15,7 +15,6 @@ import ThemeSheetComponent from './main';
 import ThemeDetailsComponent from 'components/data/theme-details';
 import { getCurrentUser } from 'state/current-user/selectors';
 import { getThemeDetails } from 'state/themes/theme-details/selectors';
-import ClientSideEffects from 'components/client-side-effects';
 import {
 	receiveThemeDetails,
 	receiveThemeDetailsFailure,
@@ -31,11 +30,9 @@ let themeDetailsCache = new Map();
 export function makeElement( ThemesComponent, Head, store, props ) {
 	return(
 		<ReduxProvider store={ store }>
-			<Head title={ props.title } tier={ props.tier || 'all' }>
-				<ThemesComponent { ...omit( props, [ 'title', 'runClientAnalytics' ] ) } />
-				<ClientSideEffects>
-					{ props.runClientAnalytics }
-				</ClientSideEffects>
+			<Head title={ props.title } description={ props.description } type={ 'website' }
+				canonicalUrl={ props.canonicalUrl } image={ props.image } tier={ props.tier || 'all' }>
+				<ThemesComponent { ...omit( props, [ 'title' ] ) } />
 			</Head>
 		</ReduxProvider>
 	);
@@ -53,6 +50,7 @@ export function fetchThemeDetailsData( context, next ) {
 	if ( theme && ( theme.timestamp + HOUR_IN_MS > Date.now() ) ) {
 		debug( 'found theme!', theme.id );
 		context.store.dispatch( receiveThemeDetails( theme ) );
+		context.renderCacheKey = context.path + theme.timestamp;
 		return next();
 	}
 
@@ -62,11 +60,13 @@ export function fetchThemeDetailsData( context, next ) {
 			themeDetails.timestamp = Date.now();
 			themeDetailsCache.set( themeSlug, themeDetails );
 			context.store.dispatch( receiveThemeDetails( themeDetails ) );
+			context.renderCacheKey = context.path + themeDetails.timestamp;
 			next();
 		} )
 		.catch( error => {
 			debug( `Error fetching theme ${ themeSlug } details: `, error.message || error );
 			context.store.dispatch( receiveThemeDetailsFailure( themeSlug, error ) );
+			context.renderCacheKey = 'theme not found';
 			next();
 		} );
 }
@@ -74,7 +74,8 @@ export function fetchThemeDetailsData( context, next ) {
 export function details( context, next ) {
 	const { slug } = context.params;
 	const user = getCurrentUser( context.store.getState() );
-	const themeName = ( getThemeDetails( context.store.getState(), slug ) || false ).name;
+	const themeDetails = getThemeDetails( context.store.getState(), slug ) || false;
+	const themeName = themeDetails.name;
 	const title = i18n.translate( '%(themeName)s Theme', {
 		args: { themeName }
 	} );
@@ -86,6 +87,9 @@ export function details( context, next ) {
 		themeSlug: slug,
 		contentSection: context.params.section,
 		title: decodeEntities( title ) + ' — WordPress.com', // TODO: Use lib/screen-title's buildTitle. Cf. https://github.com/Automattic/wp-calypso/issues/3796
+		description: decodeEntities( themeDetails.description ),
+		canonicalUrl: `https://wordpress.com/theme/${ slug }`, // TODO: use getDetailsUrl() When it becomes availavle
+		image: themeDetails.screenshot,
 		isLoggedIn: !! user
 	};
 

@@ -68,6 +68,7 @@ export default {
 				<Plans
 					sites={ sites }
 					context={ context }
+					intervalType={ context.params.intervalType }
 					destinationType={ context.params.destinationType } />
 			</CheckoutData>,
 			document.getElementById( 'primary' ),
@@ -113,7 +114,8 @@ export default {
 					<PlansCompare
 						selectedSite={ site }
 						features={ features }
-						selectedFeature={ context.params.feature }
+						selectedFeature={ context.params.feature || context.query.feature }
+						intervalType={ context.params.intervalType }
 						productsList={ productsList } />
 				</CheckoutData>
 			</Main>,

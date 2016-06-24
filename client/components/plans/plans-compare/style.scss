@@ -187,21 +187,25 @@
 
 .plans-compare__feature-title {
 	position: relative;
+	white-space: nowrap;
 }
 
 .plans-compare__feature-title__container {
-	padding-right: 20px;
+	padding-right: 5px;
 }
 
 .plans-compare__feature-descripcion {
-	position: absolute;
-	top: 50%;
-	margin-top: -9px;
-	right: 0;
+	position: relative;
+	top: -2px;
+	display: inline;
 }
 
 .plans-compare__feature-descripcion .gridicon {
 	color: $gray;
+}
+
+.plans-compare__info-hr {
+	margin-bottom: 0.5em;
 }
 
 .layout:not(.has-no-sidebar) .plans-compare {

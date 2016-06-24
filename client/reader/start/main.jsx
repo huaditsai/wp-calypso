@@ -5,6 +5,8 @@ import React from 'react';
 import { connect } from 'react-redux';
 import map from 'lodash/map';
 import page from 'page';
+import Masonry from 'react-masonry-component';
+import times from 'lodash/times';
 
 /**
  * Internal dependencies
@@ -17,6 +19,7 @@ import StartCard from './card';
 import RootChild from 'components/root-child';
 import FeedSubscriptionStore from 'lib/reader-feed-subscriptions';
 import smartSetState from 'lib/react-smart-set-state';
+import CardPlaceholder from './card-placeholder';
 
 const Start = React.createClass( {
 
@@ -54,18 +57,28 @@ const Start = React.createClass( {
 		page.redirect( '/' );
 	},
 
+	renderLoadingPlaceholders() {
+		const count = 4;
+		return times( count, function( i ) {
+			return( <CardPlaceholder key={ 'placeholder-' + i } /> );
+		} );
+	},
+
 	render() {
 		const canGraduate = ( this.state.totalSubscriptions > 0 );
+		const hasRecommendations = this.props.recommendationIds.length > 0;
 		return (
 			<Main className="reader-start">
 				<QueryReaderStartRecommendations />
 				<header className="reader-start__intro">
-					<h1 className="reader-start__title">{ this.translate( 'Welcome to the Reader' ) }</h1>
-					<p className="reader-start__description">{ this.translate( "Discover great stories and read your favorite sites' posts all in one place. Every time there are new updates to the sites you follow, you'll be the first to know!" ) }
-				</p>
+					<h1 className="reader-start__title">{ this.translate( 'Welcome to the WordPress.com Reader' ) }</h1>
+					<p className="reader-start__description">{ this.translate( "Discover great stories and read your favorite sites' posts in one place. Every time there are new updates to the sites you follow, you'll be the first to know!" ) }</p>
+					<p className="reader-start__description">{ this.translate( "We've suggested some sites that you might enjoy. Follow one or more sites to get started." ) }</p>
 				</header>
 
-				<div className="reader-start__cards">
+				{ ! hasRecommendations && this.renderLoadingPlaceholders() }
+
+				{ hasRecommendations && <Masonry className="reader-start__cards"  updateOnEachImageLoad={ true } options={ { gutter: 14 } }>
 					{ this.props.recommendationIds ? map( this.props.recommendationIds, ( recId ) => {
 						return (
 							<StartCard
@@ -73,15 +86,15 @@ const Start = React.createClass( {
 								recommendationId={ recId } />
 						);
 					} ) : null }
-				</div>
+				</Masonry> }
 
-				<RootChild className="reader-start__bar">
+				{ hasRecommendations && <RootChild className="reader-start__bar">
 					<div className="reader-start__bar-action main">
 						<span className="reader-start__bar-text">
 							{ canGraduate
 								? this.translate(
-									'Great! You\'re following %(totalSubscriptions)d site.',
-									'Great! You\'re following %(totalSubscriptions)d sites.', {
+									'Great! You\'re now following %(totalSubscriptions)d site.',
+									'Great! You\'re now following %(totalSubscriptions)d sites.', {
 										count: this.state.totalSubscriptions,
 										args: {
 											totalSubscriptions: this.state.totalSubscriptions
@@ -93,7 +106,7 @@ const Start = React.createClass( {
 						</span>
 						<Button onClick={ this.graduateColdStart } disabled={ ! canGraduate }>{ this.translate( "OK, I'm all set!" ) }</Button>
 					</div>
-				</RootChild>
+				</RootChild> }
 			</Main>
 		);
 	}

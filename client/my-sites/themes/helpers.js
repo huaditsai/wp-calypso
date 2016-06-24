@@ -55,7 +55,7 @@ export function getDetailsUrl( theme, site ) {
 
 	let baseUrl = oldShowcaseUrl + theme.id;
 	if ( config.isEnabled( 'manage/themes/details' ) ) {
-		baseUrl = `/theme/${ theme.id }/overview`;
+		baseUrl = `/theme/${ theme.id }`;
 	}
 
 	return baseUrl + ( site ? `/${ site.slug }` : '' );
@@ -141,8 +141,12 @@ export function getAnalyticsData( path, tier, site_id ) {
 	let basePath = route.sectionify( path );
 	let analyticsPageTitle = 'Themes';
 
+	if ( tier ) {
+		basePath += '/type/:tier';
+	}
+
 	if ( site_id ) {
-		basePath = basePath + '/:site_id';
+		basePath += '/:site_id';
 		analyticsPageTitle += ' > Single Site';
 	}
 

@@ -6,8 +6,7 @@ var analytics = require( 'lib/analytics' ),
 	debug = require( 'debug' )( 'calypso:my-sites:sidebar' ),
 	has = require( 'lodash/has' ),
 	includes = require( 'lodash/includes' ),
-	React = require( 'react' ),
-	startsWith = require( 'lodash/startsWith' );
+	React = require( 'react' );
 
 import page from 'page';
 
@@ -24,13 +23,12 @@ var config = require( 'config' ),
 	SidebarHeading = require( 'layout/sidebar/heading' ),
 	SidebarItem = require( 'layout/sidebar/item' ),
 	SidebarMenu = require( 'layout/sidebar/menu' ),
+	SidebarRegion = require( 'layout/sidebar/region' ),
 	SiteStatsStickyLink = require( 'components/site-stats-sticky-link' );
 
 import Button from 'components/button';
 import SidebarButton from 'layout/sidebar/button';
 import SidebarFooter from 'layout/sidebar/footer';
-import DraftsButton from 'post-editor/drafts-button';
-import Tooltip from 'components/tooltip';
 import { isPersonal, isPremium, isBusiness } from 'lib/products-values';
 
 module.exports = React.createClass( {
@@ -38,12 +36,6 @@ module.exports = React.createClass( {
 
 	componentDidMount: function() {
 		debug( 'The sidebar React component is mounted.' );
-	},
-
-	getInitialState: function() {
-		return {
-			draftsTooltip: false
-		};
 	},
 
 	onNavigate: function() {
@@ -83,7 +75,7 @@ module.exports = React.createClass( {
 		}
 
 		return paths.some( function( path ) {
-			return startsWith( this.props.path, path );
+			return path === this.props.path || 0 === this.props.path.indexOf( path + '/' );
 		}, this );
 	},
 
@@ -676,10 +668,6 @@ module.exports = React.createClass( {
 		);
 	},
 
-	onDraftsClick: function() {
-		page( '/posts/drafts' + this.siteSuffix() );
-	},
-
 	render: function() {
 		var publish = !! this.publish(),
 			appearance = ( !! this.themes() || !! this.menus() ),
@@ -688,6 +676,7 @@ module.exports = React.createClass( {
 
 		return (
 			<Sidebar>
+				<SidebarRegion>
 				<CurrentSite
 					sites={ this.props.sites }
 					siteCount={ this.props.user.get().visible_site_count }
@@ -696,7 +685,6 @@ module.exports = React.createClass( {
 				<SidebarMenu>
 					<ul>
 						{ this.stats() }
-						{ this.ads() }
 						{ this.plan() }
 					</ul>
 				</SidebarMenu>
@@ -718,26 +706,7 @@ module.exports = React.createClass( {
 
 				{ publish
 					? <SidebarMenu>
-						<SidebarHeading>
-							{ this.translate( 'Publish' ) }
-							{ config.isEnabled( 'sidebar-drafts-count' ) &&
-								<div
-									className="sidebar__drafts-button"
-									onMouseEnter={ () => this.setState( { draftsTooltip: true } ) }
-									onMouseLeave={ () => this.setState( { draftsTooltip: false } ) }
-									ref="draftsButton"
-								>
-									<DraftsButton hideText onClick={ this.onDraftsClick } />
-									<Tooltip
-										context={ this.refs && this.refs.draftsButton }
-										isVisible={ this.state.draftsTooltip }
-										position="top"
-									>
-										{ this.translate( 'Drafts' ) }
-									</Tooltip>
-								</div>
-							}
-						</SidebarHeading>
+						<SidebarHeading>{ this.translate( 'Publish' ) }</SidebarHeading>
 						{ this.publish() }
 					</SidebarMenu>
 					: null
@@ -758,6 +727,7 @@ module.exports = React.createClass( {
 					? <SidebarMenu>
 						<SidebarHeading>{ this.translate( 'Configure' ) }</SidebarHeading>
 						<ul>
+							{ this.ads() }
 							{ this.sharing() }
 							{ this.users() }
 							{ this.plugins() }
@@ -768,6 +738,7 @@ module.exports = React.createClass( {
 					</SidebarMenu>
 					: null
 				}
+				</SidebarRegion>
 				<SidebarFooter>
 					{ this.addNewWordPress() }
 				</SidebarFooter>

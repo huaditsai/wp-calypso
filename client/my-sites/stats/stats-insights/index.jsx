@@ -2,6 +2,8 @@
 * External dependencies
 */
 import React, { PropTypes } from 'react';
+import i18n from 'i18n-calypso';
+import get from 'lodash/get';
 
 /**
  * Internal dependencies
@@ -34,8 +36,6 @@ export default React.createClass( {
 			React.PropTypes.bool,
 			React.PropTypes.object
 		] ),
-		statSummaryList: PropTypes.object.isRequired,
-		streakList: PropTypes.object.isRequired,
 		summaryDate: PropTypes.string,
 		wpcomFollowersList: PropTypes.object
 	},
@@ -50,15 +50,20 @@ export default React.createClass( {
 			insightsList,
 			publicizeList,
 			site,
-			statSummaryList,
-			streakList,
-			summaryDate,
 			wpcomFollowersList } = this.props;
 
 		const moduleStrings = statsStrings();
 
 		let tagsList;
-		let summaryData = statSummaryList.get( site.ID, summaryDate );
+
+		let momentSiteZone = i18n.moment();
+
+		const gmtOffset = get( site.options, 'gmt_offset', null );
+		if ( gmtOffset ) {
+			momentSiteZone = i18n.moment().utcOffset( gmtOffset );
+		}
+
+		const summaryDate = momentSiteZone.format( 'YYYY-MM-DD' );
 
 		if ( ! site.jetpack ) {
 			tagsList = <StatsModule
@@ -74,17 +79,18 @@ export default React.createClass( {
 				<SidebarNavigation />
 				<StatsNavigation section="insights" site={ site } />
 				<div id="my-stats-content">
-					<PostingActivity streakList={ streakList } />
+					<PostingActivity />
 					<LatestPostSummary site={ site } />
 					<TodaysStats
-						site={ site }
-						summaryData={ summaryData }
+						siteId={ site ? site.ID : 0 }
+						period="day"
+						date={ summaryDate }
 						path={ '/stats/day' }
-						insights={ true }
+						title={ this.translate( 'Today\'s Stats' ) }
 					/>
 					<AllTime allTimeList={ allTimeList } />
 					<MostPopular insightsList={ insightsList } />
-					<DomainTip siteId={ site.ID } event="stats_insights_domain" />
+					<DomainTip siteId={ site ? site.ID : 0 } event="stats_insights_domain" />
 					<div className="stats-nonperiodic has-recent">
 						<div className="module-list">
 							<div className="module-column">

@@ -13,11 +13,13 @@ import debugFactory from 'debug';
  * Internal dependencies
  */
 import { abtest } from 'lib/abtest';
+import { isEnabled } from 'config';
 import { addItem } from 'lib/upgrades/actions';
 import { cartItems } from 'lib/cart-values';
 import {
 	isFreeJetpackPlan,
-	isJetpackPlan
+	isJetpackPlan,
+	isMonthly
 } from 'lib/products-values';
 import {
 	featuresList,
@@ -55,7 +57,7 @@ export function getFeatureTitle( feature ) {
 }
 
 export function getSitePlanSlug( siteID ) {
-	var site;
+	let site;
 	if ( siteID ) {
 		site = sitesList.getSite( siteID );
 	} else {
@@ -130,25 +132,58 @@ export function shouldFetchSitePlans( sitePlans, selectedSite ) {
 	return ! sitePlans.hasLoadedFromServer && ! sitePlans.isRequesting && selectedSite;
 }
 
-export function filterPlansBySiteAndProps( plans, site, hideFreePlan, showJetpackFreePlan ) {
+export function filterPlansBySiteAndProps( plans, site, hideFreePlan, intervalType, showJetpackFreePlan ) {
 	const hasPersonalPlan = site && site.plan.product_slug === PLAN_PERSONAL;
+	const personalPlanTestEnabled = abtest( 'personalPlan' ) === 'show' && isEnabled( 'plans/personal-plan' );
 
 	return plans.filter( function( plan ) {
 		if ( site && site.jetpack ) {
-			if ( showJetpackFreePlan ) {
-				return isJetpackPlan( plan );
+			if ( 'monthly' === intervalType ) {
+				if ( showJetpackFreePlan ) {
+					return isJetpackPlan( plan ) && isMonthly( plan );
+				}
+				return isJetpackPlan( plan ) && !isFreeJetpackPlan( plan ) && isMonthly( plan );
 			}
-			return isJetpackPlan( plan ) && ! isFreeJetpackPlan( plan );
+
+			if ( showJetpackFreePlan ) {
+				return isJetpackPlan( plan ) && !isMonthly( plan );
+			}
+
+			return isJetpackPlan( plan ) && !isFreeJetpackPlan( plan ) && !isMonthly( plan );
 		}
 
 		if ( hideFreePlan && PLAN_FREE === plan.product_slug ) {
 			return false;
 		}
 
-		if ( plan.product_slug === PLAN_PERSONAL && ! hasPersonalPlan && abtest( 'personalPlan' ) === 'hide' ) {
+		if ( plan.product_slug === PLAN_PERSONAL && ! ( hasPersonalPlan || personalPlanTestEnabled ) ) {
 			return false;
 		}
 
 		return ! isJetpackPlan( plan );
 	} );
+}
+
+export const isGoogleVouchersEnabled = () => {
+	return ( isEnabled( 'google-voucher' ) && abtest( 'googleVouchers' ) === 'enabled' );
+};
+
+export const isWordpressAdCreditsEnabled = () => {
+	return (
+		isGoogleVouchersEnabled() &&
+		isEnabled( 'plans/wordpress-ad-credits' ) &&
+		abtest( 'wordpressAdCredits' ) === 'enabled'
+	);
+};
+
+export function plansLink( url, site, intervalType ) {
+	if ( 'monthly' === intervalType ) {
+		url += '/monthly';
+	}
+
+	if ( site ) {
+		url += '/' + site.slug;
+	}
+
+	return url;
 }

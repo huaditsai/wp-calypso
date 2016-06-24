@@ -1,11 +1,12 @@
 module.exports = {
 	personalPlan: {
-		datestamp: '21160601',
+		datestamp: '20160623',
 		variations: {
 			hide: 50,
 			show: 50
 		},
-		defaultVariation: 'hide'
+		defaultVariation: 'hide',
+		allowExistingUsers: false
 	},
 	multiDomainRegistrationV1: {
 		datestamp: '20200721',
@@ -55,10 +56,10 @@ module.exports = {
 		defaultVariation: 'original'
 	},
 	domainSuggestionVendor: {
-		datestamp: '20160520',
+		datestamp: '20160614',
 		variations: {
-			namegen: 75,
-			domainsbot: 25,
+			namegen: 50,
+			domainsbot: 50
 		},
 		defaultVariation: 'namegen'
 	},
@@ -92,16 +93,6 @@ module.exports = {
 		allowExistingUsers: false,
 		allowAnyLocale: true
 	},
-	planPricing: {
-		datestamp: '20160426',
-		variations: {
-			monthly: 90,
-			annual: 10
-		},
-		defaultVariation: 'monthly',
-		allowExistingUsers: true,
-		allowAnyLocale: true
-	},
 	wordadsInstantActivation: {
 		datestamp: '20160607',
 		variations: {
@@ -111,6 +102,7 @@ module.exports = {
 		defaultVariation: 'disabled',
 		allowExistingUsers: true,
 	},
+<<<<<<< HEAD
 	coldStartReader: {
 		datestamp: '20160622',
 		variations: {
@@ -121,4 +113,24 @@ module.exports = {
 		defaultVariation: 'noChanges',
 		allowExistingUsers: false,
 	}
+=======
+	googleVouchers: {
+		datestamp: '20160615',
+		variations: {
+			disabled: 50,
+			enabled: 50,
+		},
+		defaultVariation: 'enabled',
+		allowExistingUsers: false,
+	},
+	wordpressAdCredits: {
+		datestamp: '20160613',
+		variations: {
+			disabled: 50,
+			enabled: 50,
+		},
+		defaultVariation: 'enabled',
+		allowExistingUsers: false,
+	},
+>>>>>>> master
 };

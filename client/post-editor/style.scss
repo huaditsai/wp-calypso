@@ -14,14 +14,6 @@
 	padding: 0;
 }
 
-.is-group-editor .email-verification-notice {
-	margin: 8px;
-
-	@include breakpoint( ">660px" ) {
-		margin: 0;
-	}
-}
-
 .post-editor__inner {
 	position: relative;
 }
@@ -38,7 +30,6 @@
 	}
 }
 
-.is-group-editor .email-verification-notice,
 .post-editor__content {
 	@include breakpoint( ">660px" ) {
 		margin-left: ( $sidebar-width-min + 1 );
@@ -221,4 +212,53 @@
 		margin: 0 auto;
 		max-height: 400px;
 	}
+}
+
+.post-editor__confirmation-dialog.is-narrow {
+	max-width: 100%;
+	border-radius: 0;
+
+	@include breakpoint( ">660px" ) {
+		max-width: 450px;
+		border-radius: 3px;
+	}
+}
+
+.post-editor__confirmation-dialog-heading {
+	font-size: 22px;
+	line-height: 1.2;
+	height: auto;
+	margin: 0 0 4px 0;
+}
+
+.post-editor__confirmation-dialog-email,
+.post-editor__confirmation-dialog-explanation,
+.post-editor__confirmation-dialog-reasoning {
+	color: darken( $gray, 30 );
+	margin: 0 0 8px 0;
+}
+
+.post-editor__confirmation-dialog-email {
+	margin-bottom: 16px;
+	color: darken( $gray, 10 );
+
+}
+
+.post-editor__confirmation-dialog-email-wrapper {
+	display: inline-block;
+	max-width: 70%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	margin-right: 5px;
+}
+
+.post-editor__confirmation-dialog-reasoning {
+	color: darken( $gray, 10 );
+	font-size: 14px;
+	margin-bottom: 24px;
+}
+
+.post-editor__confirmation-dialog-spinner {
+	display: inline-block;
+	vertical-align: -25%;
 }

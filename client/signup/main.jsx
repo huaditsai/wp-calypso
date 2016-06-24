@@ -42,7 +42,7 @@ import * as oauthToken from 'lib/oauth-token';
 /**
  * Constants
  */
-const MINIMUM_TIME_LOADING_SCREEN_IS_DISPLAYED = 1000;
+const MINIMUM_TIME_LOADING_SCREEN_IS_DISPLAYED = 8000;
 
 const Signup = React.createClass( {
 	displayName: 'Signup',
@@ -53,7 +53,9 @@ const Signup = React.createClass( {
 			progress: SignupProgressStore.get(),
 			dependencies: SignupDependencyStore.get(),
 			loadingScreenStartTime: undefined,
-			resumingStep: undefined
+			resumingStep: undefined,
+			user: user.get(),
+			loginHandler: null
 		};
 	},
 
@@ -147,6 +149,12 @@ const Signup = React.createClass( {
 
 		analytics.tracks.recordEvent( 'calypso_signup_complete', { flow: this.props.flowName } );
 
+		this.setState( {
+			loginHandler: this.handleLogin.bind( this, dependencies, destination )
+		} );
+	},
+
+	handleLogin( dependencies, destination ) {
 		const userIsLoggedIn = Boolean( user.get() );
 
 		if ( userIsLoggedIn ) {
@@ -304,14 +312,17 @@ const Signup = React.createClass( {
 			CurrentComponent = stepComponents[ this.props.stepName ],
 			propsFromConfig = assign( {}, this.props, steps[ this.props.stepName ].props ),
 			stepKey = this.state.loadingScreenStartTime ? 'processing' : this.props.stepName,
-			flow = flows.getFlow( this.props.flowName );
+			flow = flows.getFlow( this.props.flowName ),
+			hideFreePlan = this.state.dependencies && this.state.dependencies.domainItem
+				? this.state.dependencies.domainItem.is_domain_registration
+				: false;
 
 		return (
 			<div className="signup__step" key={ stepKey }>
 				{ this.localeSuggestions() }
 				{
 					this.state.loadingScreenStartTime ?
-					<SignupProcessingScreen steps={ this.state.progress } /> :
+					<SignupProcessingScreen steps={ this.state.progress } user={ this.state.user } loginHandler={ this.state.loginHandler }/> :
 					<CurrentComponent
 						path={ this.props.path }
 						step={ currentStepProgress }
@@ -325,6 +336,7 @@ const Signup = React.createClass( {
 						signupDependencies={ this.state.dependencies }
 						stepSectionName={ this.props.stepSectionName }
 						positionInFlow={ this.positionInFlow() }
+						hideFreePlan={ hideFreePlan }
 						{ ...propsFromConfig } />
 				}
 			</div>

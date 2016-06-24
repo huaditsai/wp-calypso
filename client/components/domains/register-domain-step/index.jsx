@@ -25,11 +25,11 @@ import { getFixedDomainSearch, canRegister } from 'lib/domains';
 import SearchCard from 'components/search-card';
 import DomainRegistrationSuggestion from 'components/domains/domain-registration-suggestion';
 import DomainMappingSuggestion from 'components/domains/domain-mapping-suggestion';
+import DomainSuggestion from 'components/domains/domain-suggestion';
 import DomainSearchResults from 'components/domains/domain-search-results';
 import ExampleDomainSuggestions from 'components/domains/example-domain-suggestions';
 import analyticsMixin from 'lib/mixins/analytics';
 import * as upgradesActions from 'lib/upgrades/actions';
-import { isPlan } from 'lib/products-values';
 import cartItems from 'lib/cart-values/cart-items';
 import { getCurrentUser } from 'state/current-user/selectors';
 import { abtest } from 'lib/abtest';
@@ -38,6 +38,7 @@ import {
 	getDomainsSuggestions,
 	getDomainsSuggestionsError
 } from 'state/domains/suggestions/selectors';
+import support from 'lib/url/support';
 
 const domains = wpcom.domains();
 
@@ -46,7 +47,8 @@ const SUGGESTION_QUANTITY = 10;
 const INITIAL_SUGGESTION_QUANTITY = 2;
 
 const analytics = analyticsMixin( 'registerDomain' ),
-	domainsWithPlansOnlyTestEnabled = abtest( 'domainsWithPlansOnly' ) === 'plansOnly';
+	domainsWithPlansOnlyTestEnabled = abtest( 'domainsWithPlansOnly' ) === 'plansOnly',
+	searchVendor = abtest( 'domainSuggestionVendor' );
 
 let searchQueue = [],
 	searchStackTimer = null,
@@ -60,7 +62,7 @@ function getQueryObject( props ) {
 	return {
 		query: props.selectedSite.domain.split( '.' )[ 0 ],
 		quantity: SUGGESTION_QUANTITY,
-		vendor: abtest( 'domainSuggestionVendor' ),
+		vendor: searchVendor,
 		includeSubdomain: props.includeWordPressDotCom
 	};
 }
@@ -89,7 +91,7 @@ function reportSearchStats( { query, section, timestamp } ) {
 	}
 	lastSearchTimestamp = timestamp;
 	searchCount++;
-	analytics.recordEvent( 'searchFormSubmit', query, section, timeDiffFromLastSearchInSeconds, searchCount );
+	analytics.recordEvent( 'searchFormSubmit', query, section, timeDiffFromLastSearchInSeconds, searchCount, searchVendor );
 }
 
 function enqueueSearchStatReport( search ) {
@@ -288,8 +290,7 @@ const RegisterDomainStep = React.createClass( {
 	},
 
 	onSearch: function( searchQuery ) {
-		var suggestions = [],
-			domain = getFixedDomainSearch( searchQuery );
+		const domain = getFixedDomainSearch( searchQuery );
 
 		this.setState( { lastQuery: searchQuery }, this.save );
 
@@ -371,7 +372,6 @@ const RegisterDomainStep = React.createClass( {
 						const analyticsResults = [ error.code || error.error || 'ERROR' + ( error.statusCode || '' ) ];
 						this.recordEvent( 'searchResultsReceive', domain, analyticsResults, timeDiff, -1, this.props.analyticsSection );
 						callback( error, null );
-
 					} );
 				}
 			],
@@ -401,7 +401,7 @@ const RegisterDomainStep = React.createClass( {
 
 		if ( this.isLoadingSuggestions() ) {
 			domainRegistrationSuggestions = times( INITIAL_SUGGESTION_QUANTITY + 1, function( n ) {
-				return <DomainRegistrationSuggestion key={ 'suggestion-' + n } />;
+				return <DomainSuggestion.Placeholder key={ 'suggestion-' + n } />;
 			} );
 		} else {
 			// only display two suggestions initially
@@ -413,7 +413,8 @@ const RegisterDomainStep = React.createClass( {
 						suggestion={ suggestion }
 						key={ suggestion.domain_name }
 						cart={ this.props.cart }
-						buttonLabel={ this.props.buttonLabel }
+						selectedSite={ this.props.selectedSite }
+						withPlansOnly={ domainsWithPlansOnlyTestEnabled }
 						onButtonClick={ this.addRemoveDomainToCart.bind( null, suggestion ) } />
 				);
 			}, this );
@@ -421,9 +422,8 @@ const RegisterDomainStep = React.createClass( {
 			domainMappingSuggestion = (
 				<DomainMappingSuggestion
 					onButtonClick={ this.goToMapDomainStep }
-					buttonLabel={ domainsWithPlansOnlyTestEnabled &&
-						! ( this.props.selectedSite && isPlan( this.props.selectedSite.plan ) ) &&
-						! cartItems.isNextDomainFree( this.props.cart ) && this.translate( 'Upgrade' ) }
+					selectedSite={ this.props.selectedSite }
+					withPlansOnly={ domainsWithPlansOnlyTestEnabled }
 					cart={ this.props.cart }
 					products={ this.props.products } />
 				);
@@ -472,15 +472,12 @@ const RegisterDomainStep = React.createClass( {
 			<DomainSearchResults
 				key="domain-search-results" // key is required for CSS transition of content/
 				availableDomain={ availableDomain }
-				buttonLabel={ this.props.buttonLabel }
+				withPlansOnly={ domainsWithPlansOnlyTestEnabled }
 				lastDomainSearched={ lastDomainSearched }
 				lastDomainError = { this.state.lastDomainError }
 				onAddMapping={ onAddMapping }
 				onClickResult={ this.addRemoveDomainToCart }
 				onClickMapping={ this.goToMapDomainStep }
-				mappingSuggestionLabel={ domainsWithPlansOnlyTestEnabled &&
-						! ( this.props.selectedSite && isPlan( this.props.selectedSite.plan ) ) &&
-						! cartItems.isNextDomainFree( this.props.cart ) && this.translate( 'Upgrade' ) }
 				suggestions={ suggestions }
 				products={ this.props.products }
 				selectedSite={ this.props.selectedSite }
@@ -576,7 +573,20 @@ const RegisterDomainStep = React.createClass( {
 				break;
 
 			case 'mappable_but_blacklisted_domain':
-				message = this.translate( 'Domain cannot be mapped to a WordPress.com blog because of blacklisted term.' );
+				if ( domain.toLowerCase().indexOf( 'wordpress' ) > -1 ) {
+					message = this.translate(
+						'Due to {{a1}}trademark policy{{/a1}}, we are not able to allow domains containing {{strong}}WordPress{{/strong}} to be registered or mapped here. Please {{a2}}contact support{{/a2}} if you have any questions.',
+						{
+							components: {
+								strong: <strong />,
+								a1: <a target="_blank" href="http://wordpressfoundation.org/trademark-policy/"/>,
+								a2: <a href={ support.CALYPSO_CONTACT }/>
+							}
+						}
+					);
+				} else {
+					message = this.translate( 'Domain cannot be mapped to a WordPress.com blog because of blacklisted term.' );
+				}
 				break;
 
 			case 'mappable_but_forbidden_subdomain':
@@ -610,7 +620,6 @@ const RegisterDomainStep = React.createClass( {
 			case 'server_error':
 				message = this.translate( 'Sorry but there was a problem processing your request. Please try again in a few minutes.' );
 				break;
-
 
 			default:
 				throw new Error( 'Unrecognized error code: ' + error.code );

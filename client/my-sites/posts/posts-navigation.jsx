@@ -128,7 +128,8 @@ export default React.createClass( {
 					authorSegmented.element : null
 				}
 				<Search
-					pinned={ true }
+					pinned
+					fitsContainer
 					onSearch={ this.doSearch }
 					initialValue={ this.props.search }
 					placeholder={ 'Search ' + statusTabs.selectedText + '...' }
@@ -169,6 +170,7 @@ export default React.createClass( {
 
 			statusItems.push(
 				<NavItem
+					className={ 'is-' + status }
 					key={ 'statusTabs' + path }
 					path={ path }
 					count={ null === this.props.sites.selected || isJetpackSite ?

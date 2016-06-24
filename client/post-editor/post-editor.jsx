@@ -7,8 +7,7 @@ const ReactDom = require( 'react-dom' ),
 	i18n = require( 'i18n-calypso' ),
 	page = require( 'page' ),
 	debounce = require( 'lodash/debounce' ),
-	throttle = require( 'lodash/throttle' ),
-	assign = require( 'lodash/assign' );
+	throttle = require( 'lodash/throttle' );
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
@@ -22,7 +21,6 @@ const actions = require( 'lib/posts/actions' ),
 	EditorDrawer = require( 'post-editor/editor-drawer' ),
 	FeaturedImage = require( 'post-editor/editor-featured-image' ),
 	EditorGroundControl = require( 'post-editor/editor-ground-control' ),
-	EditorGroundControlI18n = require( 'post-editor/editor-ground-control.i18n' ), // temporary for i18n tools to pick up
 	EditorTitleContainer = require( 'post-editor/editor-title/container' ),
 	EditorPageSlug = require( 'post-editor/editor-page-slug' ),
 	NoticeAction = require( 'components/notice/notice-action' ),
@@ -36,14 +34,14 @@ const actions = require( 'lib/posts/actions' ),
 	layoutFocus = require( 'lib/layout-focus' ),
 	observe = require( 'lib/mixins/data-observe' ),
 	DraftList = require( 'my-sites/drafts/draft-list' ),
-	PreferencesActions = require( 'lib/preferences/actions' ),
 	InvalidURLDialog = require( 'post-editor/invalid-url-dialog' ),
 	RestorePostDialog = require( 'post-editor/restore-post-dialog' ),
+	VerifyEmailDialog = require( 'post-editor/verify-email-dialog' ),
 	utils = require( 'lib/posts/utils' ),
 	EditorPreview = require( './editor-preview' ),
 	stats = require( 'lib/posts/stats' ),
-	analytics = require( 'lib/analytics' ),
-	VerifyEmailDialogI18n = require( 'post-editor/verify-email-dialog.i18n' ); // temporary for i18n tools to pick up
+	analytics = require( 'lib/analytics' );
+
 import { getSelectedSiteId } from 'state/ui/selectors';
 import { setEditorLastDraft, resetEditorLastDraft } from 'state/ui/editor/last-draft/actions';
 import { isEditorDraftsVisible, getEditorPostId } from 'state/ui/editor/selectors';
@@ -52,6 +50,10 @@ import { receivePost, editPost, resetPostEdits } from 'state/posts/actions';
 import EditorSidebarHeader from 'post-editor/editor-sidebar/header';
 import EditorDocumentHead from 'post-editor/editor-document-head';
 import EditorPostTypeUnsupported from 'post-editor/editor-post-type-unsupported';
+import EditorForbidden from 'post-editor/editor-forbidden';
+import { savePreference } from 'state/preferences/actions';
+import { getPreference } from 'state/preferences/selectors';
+import QueryPreferences from 'components/data/query-preferences';
 
 const messages = {
 	post: {
@@ -165,7 +167,11 @@ const messages = {
 const PostEditor = React.createClass( {
 	propTypes: {
 		preferences: React.PropTypes.object,
-		sites: React.PropTypes.object
+		setEditorModePreference: React.PropTypes.func,
+		editorModePreference: React.PropTypes.string,
+		sites: React.PropTypes.object,
+		user: React.PropTypes.object,
+		userUtils: React.PropTypes.object,
 	},
 
 	_previewWindow: null,
@@ -175,17 +181,17 @@ const PostEditor = React.createClass( {
 		observe( 'sites' )
 	],
 
-	getInitialState: function() {
-		var state = this.getPostEditState();
-
-		return assign( {}, state, {
+	getInitialState() {
+		return {
+			...this.getPostEditState(),
 			isSaving: false,
 			isPublishing: false,
 			notice: false,
+			showVerifyEmailDialog: false,
 			showAutosaveDialog: true,
 			isLoadingAutosave: false,
 			isTitleFocused: false
-		} );
+		};
 	},
 
 	getPostEditState: function() {
@@ -207,9 +213,19 @@ const PostEditor = React.createClass( {
 		PostEditStore.on( 'change', this.onEditedPostChange );
 		this.debouncedSaveRawContent = debounce( this.saveRawContent, 200 );
 		this.debouncedAutosave = debounce( throttle( this.autosave, 20000 ), 3000 );
-		this.recordedDefaultEditorMode = false;
 		this.switchEditorVisualMode = this.switchEditorMode.bind( this, 'tinymce' );
 		this.switchEditorHtmlMode = this.switchEditorMode.bind( this, 'html' );
+
+		this.setState( {
+			isEditorInitialized: false
+		} );
+	},
+
+	componentWillUpdate( nextProps, nextState ) {
+		const { isNew, savedPost } = nextState;
+		if ( ! isNew && savedPost && savedPost !== this.state.savedPost ) {
+			nextProps.receivePost( savedPost );
+		}
 	},
 
 	componentDidMount: function() {
@@ -290,8 +306,10 @@ const PostEditor = React.createClass( {
 		}
 		return (
 			<div className="post-editor">
+				<QueryPreferences />
 				<EditorDocumentHead />
 				<EditorPostTypeUnsupported />
+				<EditorForbidden />
 				<div className="post-editor__inner">
 					<div className="post-editor__content">
 						<EditorMobileNavigation site={ site } onClose={ this.onClose } />
@@ -346,6 +364,7 @@ const PostEditor = React.createClass( {
 								tabIndex={ 2 }
 								isNew={ this.state.isNew }
 								onSetContent={ this.debouncedSaveRawContent }
+								onInit={ this.onEditorInitialized }
 								onChange={ this.onEditorContentChange }
 								onKeyUp={ this.debouncedSaveRawContent }
 								onFocus={ this.onEditorFocus }
@@ -380,7 +399,7 @@ const PostEditor = React.createClass( {
 								post={ this.state.post }
 								isNew={ this.state.isNew }
 								isDirty={ this.state.isDirty }
-								isSaveBlocked={ this.state.isSaveBlocked }
+								isSaveBlocked={ this.isSaveBlocked() }
 								hasContent={ this.state.hasContent }
 								isSaving={ this.state.isSaving }
 								isPublishing={ this.state.isPublishing }
@@ -388,7 +407,10 @@ const PostEditor = React.createClass( {
 								onPreview={ this.onPreview }
 								onPublish={ this.onPublish }
 								onTrashingPost={ this.onTrashingPost }
+								onMoreInfoAboutEmailVerify={ this.onMoreInfoAboutEmailVerify }
 								site={ site }
+								user={ this.props.user }
+								userUtils={ this.props.userUtils }
 								type={ this.props.type }
 							/>
 							<EditorDrawer
@@ -406,6 +428,12 @@ const PostEditor = React.createClass( {
 						post={ this.state.post }
 						onClose={ this.onClose }
 						onRestore={ this.onSaveTrashed }
+					/>
+				: null }
+				{ this.state.showVerifyEmailDialog
+					? <VerifyEmailDialog
+						user={ this.props.user }
+						onClose={ this.closeVerifyEmailDialog }
 					/>
 				: null }
 				{ isInvalidURL
@@ -444,6 +472,10 @@ const PostEditor = React.createClass( {
 
 	closeAutosaveDialog: function() {
 		this.setState( { showAutosaveDialog: false } );
+	},
+
+	closeVerifyEmailDialog: function() {
+		this.setState( { showVerifyEmailDialog: false } );
 	},
 
 	getMessage: function( name ) {
@@ -493,6 +525,14 @@ const PostEditor = React.createClass( {
 		}
 	},
 
+	isSaveBlocked() {
+		return this.state.isSaveBlocked || ! this.state.isEditorInitialized;
+	},
+
+	onEditorInitialized() {
+		this.setState( { isEditorInitialized: true } );
+	},
+
 	onEditorContentChange: function() {
 		debug( 'editor content changed' );
 		this.debouncedSaveRawContent();
@@ -513,7 +553,7 @@ const PostEditor = React.createClass( {
 	autosave: function() {
 		var callback;
 
-		if ( this.state.isSaving === true || this.state.isSaveBlocked ) {
+		if ( this.state.isSaving === true || this.isSaveBlocked() ) {
 			return;
 		}
 
@@ -568,6 +608,12 @@ const PostEditor = React.createClass( {
 		}
 
 		return path;
+	},
+
+	onMoreInfoAboutEmailVerify: function() {
+		this.setState( {
+			showVerifyEmailDialog: true
+		} );
 	},
 
 	onTrashingPost: function( error ) {
@@ -798,6 +844,9 @@ const PostEditor = React.createClass( {
 			this.props.setEditorPostId( post.ID );
 		}
 
+		// Receive updated post into state
+		this.props.receivePost( post );
+
 		// make sure the history entry has the post ID in it, but don't dispatch
 		page.replace(
 			basePath + '/' + this.props.sites.getSite( post.site_ID ).slug + '/' + post.ID,
@@ -827,17 +876,14 @@ const PostEditor = React.createClass( {
 
 	getEditorMode: function() {
 		var editorMode = 'tinymce';
-		if ( this.props.preferences ) {
-			if ( this.props.preferences[ 'editor-mode' ] ) {
-				editorMode = this.props.preferences[ 'editor-mode' ];
-			}
+		if ( this.props.editorModePreference ) {
+			editorMode = this.props.editorModePreference;
 
 			if ( ! this.recordedDefaultEditorMode ) {
 				analytics.mc.bumpStat( 'calypso_default_editor_mode', editorMode );
 				this.recordedDefaultEditorMode = true;
 			}
 		}
-
 		return editorMode;
 	},
 
@@ -848,7 +894,7 @@ const PostEditor = React.createClass( {
 			this.refs.editor.setEditorContent( content );
 		}
 
-		PreferencesActions.set( 'editor-mode', mode );
+		this.props.setEditorModePreference( mode );
 
 		// Defer actions until next available tick to avoid
 		// dispatching inside a dispatch which can happen if for example the
@@ -873,7 +919,8 @@ export default connect(
 		return {
 			siteId: getSelectedSiteId( state ),
 			postId: getEditorPostId( state ),
-			showDrafts: isEditorDraftsVisible( state )
+			showDrafts: isEditorDraftsVisible( state ),
+			editorModePreference: getPreference( state, 'editor-mode' ),
 		};
 	},
 	( dispatch ) => {
@@ -884,7 +931,8 @@ export default connect(
 			receivePost,
 			editPost,
 			resetPostEdits,
-			setEditorPostId
+			setEditorPostId,
+			setEditorModePreference: savePreference.bind( null, 'editor-mode' ),
 		}, dispatch );
 	},
 	null,

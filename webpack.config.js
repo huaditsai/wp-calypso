@@ -33,8 +33,15 @@ webpackConfig = {
 		chunkFilename: '[name].[chunkhash].js',
 		devtoolModuleFilenameTemplate: 'app:///[resource-path]'
 	},
-	devtool: '#eval',
+	debug: true,
+	devtool: '#eval-cheap-module-source-map',
 	module: {
+		preLoaders: [
+			{
+				test: /\.jsx?$/,
+				loader: 'source-map-loader'
+			}
+		],
 		loaders: [
 			{
 				test: /sections.js$/,
@@ -62,7 +69,10 @@ webpackConfig = {
 	resolve: {
 		extensions: [ '', '.json', '.js', '.jsx' ],
 		root: [ path.join( __dirname, 'client' ) ],
-		modulesDirectories: [ 'node_modules' ]
+		modulesDirectories: [ 'node_modules' ],
+		alias: {
+			'react-virtualized': 'react-virtualized/dist/commonjs'
+		}
 	},
 	resolveLoader: {
 		root: [ __dirname ]
@@ -83,8 +93,7 @@ webpackConfig = {
 			}
 		} ),
 		new webpack.optimize.OccurenceOrderPlugin( true ),
-		new webpack.IgnorePlugin( /^props$/ ),
-		new webpack.IgnorePlugin( /^\.\/locale$/, /moment$/ )
+		new webpack.IgnorePlugin( /^props$/ )
 	],
 	externals: [ 'electron' ]
 };
@@ -109,7 +118,7 @@ if ( CALYPSO_ENV === 'desktop' || CALYPSO_ENV === 'desktop-mac-app-store' ) {
 jsLoader = {
 	test: /\.jsx?$/,
 	exclude: /node_modules/,
-	loaders: [ 'babel-loader?cacheDirectory&optional[]=runtime' ]
+	loaders: [ 'babel-loader?cacheDirectory' ]
 };
 
 if ( CALYPSO_ENV === 'development' ) {
@@ -125,6 +134,7 @@ if ( CALYPSO_ENV === 'development' ) {
 	jsLoader.loaders = [ 'react-hot' ].concat( jsLoader.loaders );
 } else {
 	webpackConfig.entry[ 'build-' + CALYPSO_ENV ] = path.join( __dirname, 'client', 'boot' );
+	webpackConfig.debug = false;
 	webpackConfig.devtool = false;
 }
 

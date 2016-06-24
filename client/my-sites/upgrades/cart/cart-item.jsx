@@ -13,10 +13,10 @@ import {
 	isDomainProduct,
 	isGoogleApps,
 	isTheme,
+	isMonthly,
 	isPlan
 } from 'lib/products-values';
 import * as upgradesActions from 'lib/upgrades/actions';
-import { abtest } from 'lib/abtest';
 
 const getIncludedDomain = cartItems.getIncludedDomain;
 
@@ -67,13 +67,17 @@ export default React.createClass( {
 			return null;
 		}
 
-		if ( abtest( 'planPricing' ) === 'annual' || cost <= 0 ) {
+		if ( cost <= 0 ) {
+			return null;
+		}
+
+		if ( isMonthly( this.props.cartItem ) ) {
 			return null;
 		}
 
 		return this.translate( '(%(monthlyPrice)f %(currency)s x 12 months)', {
 			args: {
-				monthlyPrice: +( cost / 12 ).toFixed( 2 ),
+				monthlyPrice: +( cost / 12 ).toFixed( currency === 'JPY' ? 0 : 2 ),
 				currency
 			}
 		} );
@@ -117,7 +121,11 @@ export default React.createClass( {
 	render: function() {
 		var name = this.getProductName();
 		if ( this.props.cartItem.bill_period && this.props.cartItem.bill_period !== -1 ) {
-			name += ' - ' + this.translate( 'annual subscription' );
+			if ( isMonthly( this.props.cartItem ) ) {
+				name += ' - ' + this.translate( 'monthly subscription' );
+			} else {
+				name += ' - ' + this.translate( 'annual subscription' );
+			}
 		}
 
 		return (
