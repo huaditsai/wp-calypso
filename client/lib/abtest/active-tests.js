@@ -102,7 +102,6 @@ module.exports = {
 		defaultVariation: 'disabled',
 		allowExistingUsers: true,
 	},
-<<<<<<< HEAD
 	coldStartReader: {
 		datestamp: '20160622',
 		variations: {
@@ -113,7 +112,6 @@ module.exports = {
 		defaultVariation: 'noChanges',
 		allowExistingUsers: false,
 	}
-=======
 	googleVouchers: {
 		datestamp: '20160615',
 		variations: {
@@ -132,5 +130,4 @@ module.exports = {
 		defaultVariation: 'enabled',
 		allowExistingUsers: false,
 	},
->>>>>>> master
 };
